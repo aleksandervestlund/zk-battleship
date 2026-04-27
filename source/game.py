@@ -1,5 +1,14 @@
 from dataclasses import dataclass
+from secrets import randbelow
 
+from source.battleship_zk import (
+    BattleshipSecret,
+    commitment_for,
+    make_hit_response,
+    make_secret,
+    setup_battleship_circuit,
+    verify_hit_response,
+)
 from source.client import recv, send
 from source.constants import (
     HIT_MSG,
@@ -18,6 +27,17 @@ from source.player import Player
 @dataclass(slots=True)
 class Game:
     player: Player
+    secret: BattleshipSecret | None = None
+    commitment: str | None = None
+    opponent_commitment: str | None = None
+
+    def __post_init__(self) -> None:
+        setup_battleship_circuit()
+        self.secret = make_secret(
+            self.player.board.committed_coordinate(),
+            salt=randbelow(2**64),
+        )
+        self.commitment = commitment_for(self.secret)
 
     def attacking_turn(self) -> bool:
         print(TURN_MSG)
@@ -26,7 +46,11 @@ class Game:
         coordinate = get_coordinate()
         send(self.player.conn, str(coordinate))
 
-        result = recv()
+        result = verify_hit_response(
+            recv(),
+            guess=coordinate,
+            expected_commitment=self._opponent_commitment(),
+        )
         hit = result in {HIT_STR, LOST_STR}
         self.player.board.check_hit_on_other(coordinate, hit)
 
@@ -44,15 +68,24 @@ class Game:
     def defending_turn(self) -> bool:
         coordinate = Coordinate.from_str(recv())
         hit = self.player.board.check_hit_on_self(coordinate)
+        result = (
+            LOST_STR
+            if hit and self.check_lost()
+            else HIT_STR if hit else MISS_STR
+        )
+        response = make_hit_response(
+            coordinate,
+            hit=hit,
+            result=result,
+            commitment=self._commitment(),
+            secret=self._secret(),
+        )
+        send(self.player.conn, response)
 
-        if hit and self.check_lost():
-            send(self.player.conn, LOST_STR)
-            return True
-
-        send(self.player.conn, HIT_STR if hit else MISS_STR)
         return hit
 
     def run(self) -> None:
+        self.exchange_commitments()
         my_go = self.player.is_host
 
         while True:
@@ -71,3 +104,22 @@ class Game:
                 self.defending_turn()
 
             my_go = not my_go
+
+    def exchange_commitments(self) -> None:
+        send(self.player.conn, self._commitment())
+        self.opponent_commitment = recv()
+
+    def _secret(self) -> BattleshipSecret:
+        if self.secret is None:
+            raise RuntimeError("Battleship ZK secret is not initialized")
+        return self.secret
+
+    def _commitment(self) -> str:
+        if self.commitment is None:
+            raise RuntimeError("Battleship commitment is not initialized")
+        return self.commitment
+
+    def _opponent_commitment(self) -> str:
+        if self.opponent_commitment is None:
+            raise RuntimeError("Opponent commitment is not initialized")
+        return self.opponent_commitment

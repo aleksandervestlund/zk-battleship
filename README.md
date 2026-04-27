@@ -73,3 +73,30 @@ proof = prove_groth16_inputs(
 is_valid = verify_groth16_proof(circom_path, proof)
 print(is_valid)
 ```
+
+## Battleship ZK Flow
+
+The game currently uses `circuits/battleship_hit.circom` to prove each
+hit/miss response. The circuit proves that a defender knows a private committed
+ship coordinate and salt, and that the reported result for the attacker's guess
+is correct.
+
+The current circuit proves one committed ship cell, so the demo game uses one
+ship of length 1. Generated Battleship artifacts are written under:
+
+```text
+circuits/build/battleship_hit/
+```
+
+During game startup, both players exchange Poseidon commitments. During each
+defense turn, the defender sends a JSON response containing:
+
+```text
+result
+proof
+public inputs
+```
+
+The attacker verifies that proof before accepting the hit/miss result. The
+socket layer uses newline-delimited messages so proof JSON can be larger than a
+single TCP receive buffer.

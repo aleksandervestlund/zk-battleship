@@ -33,10 +33,15 @@ class Board:
     def check_all_ships_sunk(self) -> bool:
         return all(ship.is_sunk() for ship in self.ships)
 
+    def committed_coordinate(self) -> Coordinate:
+        return next(iter(self.ships[0].hits))
+
     def check_hit_on_self(self, coordinate: Coordinate) -> bool:
         x, y = coordinate.to_idx()
 
-        if self.self_view[x][y] in {Square.HIT, Square.MISS}:
+        if self.self_view[x][y] is Square.HIT:
+            return True
+        if self.self_view[x][y] is Square.MISS:
             return False
 
         for ship in self.ships:

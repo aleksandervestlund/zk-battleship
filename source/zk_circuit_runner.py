@@ -110,6 +110,62 @@ class ProofArtifacts:
     public_path: Path
 
 
+@dataclass(frozen=True, slots=True)
+class ProofPayload:
+    """Serializable Groth16 proof payload for network messages."""
+
+    proof: Any
+    public: list[Any]
+    metadata: Mapping[str, Any]
+
+    @classmethod
+    def from_artifacts(
+        cls,
+        proof: ProofArtifacts,
+        *,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> "ProofPayload":
+        return cls(
+            proof=_read_json(proof.proof_path),
+            public=_read_json(proof.public_path),
+            metadata=dict(metadata or {}),
+        )
+
+    @classmethod
+    def from_json(cls, raw_payload: str) -> "ProofPayload":
+        try:
+            data = json.loads(raw_payload)
+        except json.JSONDecodeError as error:
+            raise ZKCircuitRunnerError(
+                f"invalid proof payload JSON: {error}"
+            ) from error
+
+        try:
+            return cls(
+                proof=data["proof"],
+                public=list(data["public"]),
+                metadata=dict(data.get("metadata", {})),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ZKCircuitRunnerError("invalid proof payload") from error
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "metadata": dict(self.metadata),
+                "proof": self.proof,
+                "public": self.public,
+            },
+            separators=(",", ":"),
+        )
+
+    def require_public_inputs(self, expected_public_inputs: list[Any]) -> None:
+        expected = [str(value) for value in expected_public_inputs]
+        actual = [str(value) for value in self.public]
+        if actual != expected:
+            raise ZKCircuitRunnerError("proof public inputs do not match")
+
+
 def setup_groth16_circuit(
     circom_path: Path,
     *,
@@ -145,6 +201,8 @@ def setup_groth16_circuit(
             "--sym",
             "-o",
             str(build_dir),
+            "-l",
+            str(REPO_ROOT / "node_modules"),
         ),
         check=True,
     )
@@ -290,6 +348,45 @@ def verify_groth16_proof(
         ),
         proof=proof,
     )
+
+
+def prove_groth16_payload(
+    circom_path: Path,
+    inputs: Mapping[str, Any],
+    *,
+    metadata: Mapping[str, Any] | None = None,
+    build_dir: Path | None = None,
+    output_dir: Path | None = None,
+    proof_name: str = "proof",
+) -> ProofPayload:
+    """Generate a serializable Groth16 proof payload."""
+    proof = prove_groth16_inputs(
+        circom_path,
+        inputs,
+        build_dir=build_dir,
+        output_dir=output_dir,
+        proof_name=proof_name,
+    )
+    return ProofPayload.from_artifacts(proof, metadata=metadata)
+
+
+def verify_groth16_payload(
+    circom_path: Path,
+    payload: ProofPayload,
+    *,
+    build_dir: Path | None = None,
+) -> bool:
+    """Verify a serializable Groth16 proof payload."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        proof_path = Path(temp_dir) / "proof.json"
+        public_path = Path(temp_dir) / "public.json"
+        proof_path.write_text(json.dumps(payload.proof), encoding="utf-8")
+        public_path.write_text(json.dumps(payload.public), encoding="utf-8")
+        return verify_groth16_proof(
+            circom_path,
+            ProofArtifacts(proof_path=proof_path, public_path=public_path),
+            build_dir=build_dir,
+        )
 
 
 def load_circuit_artifacts(manifest_path: Path) -> CircuitArtifacts:
@@ -487,6 +584,10 @@ def _json_path(path: Path, base_dir: Path) -> str:
         return str(resolved_path.relative_to(resolved_base_dir))
     except ValueError:
         return str(resolved_path)
+
+
+def _read_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def build_parser() -> argparse.ArgumentParser:

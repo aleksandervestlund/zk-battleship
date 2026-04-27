@@ -2,6 +2,8 @@ from source.role import Role as _Role
 
 
 SHIP_LENGTHS = [5, 4, 3, 3, 2]
+# The current ZK hit circuit proves against one committed coordinate.
+SHIP_LENGTHS = [1]
 
 ROWS = "ABCDEFGHIJ"
 N_ROWS = len(ROWS)

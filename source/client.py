@@ -13,18 +13,21 @@ from source.constants import (
 from source.input_helpers import get_input
 from source.role import Role
 
-
 incoming: Queue[str] = Queue()
 
 
 def receive(conn: socket) -> None:
+    buffer = ""
     while True:
         try:
             if not (data := conn.recv(BUFSIZE)):
                 print()
                 print(PEER_DISCONNECT_MSG)
                 break
-            incoming.put(data.decode())
+            buffer += data.decode()
+            while "\n" in buffer:
+                msg, buffer = buffer.split("\n", 1)
+                incoming.put(msg)
         except ConnectionResetError:
             break
 
@@ -63,7 +66,7 @@ def get_conn(role: Role) -> socket:
 
 
 def send(conn: socket, msg: str) -> None:
-    conn.sendall(msg.encode())
+    conn.sendall(f"{msg}\n".encode())
 
 
 def recv() -> str:

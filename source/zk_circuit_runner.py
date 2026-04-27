@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CIRCUITS_DIR = REPO_ROOT / "circuits"
 CIRCUIT_BUILD_DIR = CIRCUITS_DIR / "build"

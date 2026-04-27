@@ -65,7 +65,6 @@ class Game:
         if result == LOST_STR:
             ui.draw(self.player.board, status=WIN_MSG)
             return False
-
         return True
 
     def handle_opponent_go(self, ui: PygameUI) -> bool:

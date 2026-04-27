@@ -139,8 +139,10 @@ class PygameUI:
             for c in range(N_COLS):
                 sq = grid[r][c]
                 color = self._color_for_square(sq, hide_ships)
+
                 if hover_cell == (r, c):
                     color = self._hover_color(color)
+
                 rect = Rect(
                     ox + c * self.CELL,
                     oy + r * self.CELL,
@@ -184,6 +186,7 @@ class PygameUI:
         cell = self._grid_cell_from_pos(
             pygame.mouse.get_pos(), self.right_origin
         )
+
         if cell is None:
             return None
 

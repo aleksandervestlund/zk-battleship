@@ -13,6 +13,7 @@ from source.zk_circuit_runner import (
     verify_groth16_payload,
 )
 
+
 BATTLESHIP_CIRCUIT = Path("circuits/battleship_hit.circom")
 
 
@@ -82,8 +83,12 @@ def verify_hit_response(
     """Verify a proof-bearing response and return HIT, MISS, or LOST."""
     setup_battleship_circuit()
     payload = ProofPayload.from_json(raw_response)
-    result = str(payload.metadata.get("result"))
-    if result not in {HIT_STR, MISS_STR, LOST_STR}:
+
+    if (result := str(payload.metadata.get("result"))) not in {
+        HIT_STR,
+        MISS_STR,
+        LOST_STR,
+    }:
         raise ZKCircuitRunnerError(f"invalid Battleship result: {result!r}")
 
     reported_hit = 1 if result in {HIT_STR, LOST_STR} else 0
@@ -95,9 +100,8 @@ def verify_hit_response(
         str(reported_hit),
     ]
     payload.require_public_inputs(expected_public)
-    is_valid = verify_groth16_payload(BATTLESHIP_CIRCUIT, payload)
 
-    if not is_valid:
+    if not verify_groth16_payload(BATTLESHIP_CIRCUIT, payload):
         raise ZKCircuitRunnerError("invalid Battleship proof")
     return result
 

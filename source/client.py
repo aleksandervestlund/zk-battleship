@@ -13,6 +13,7 @@ from source.constants import (
 from source.input_helpers import get_input
 from source.role import Role
 
+
 incoming: Queue[str] = Queue()
 
 

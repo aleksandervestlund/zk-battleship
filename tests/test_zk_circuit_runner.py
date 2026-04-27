@@ -4,75 +4,126 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from source.zk_circuit_runner import main
+from source.zk_circuit_runner import (
+    ProofArtifacts,
+    ZKCircuitRunnerError,
+    main,
+    prove_groth16_inputs,
+    setup_groth16_circuit,
+    verify_groth16_proof,
+)
 
 
-class ZKCircuitRunnerCLITests(TestCase):
-    def test_cli_proves_and_verifies_polynomial_proof(self) -> None:
+class ZKCircuitRunnerTests(TestCase):
+    def test_python_api_sets_up_proves_and_verifies(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            proof_path = Path(temp_dir) / "proof.json"
-            public_path = Path(temp_dir) / "public.json"
+            build_dir = Path(temp_dir) / "build"
+            proof_dir = Path(temp_dir) / "proofs"
+
+            setup_groth16_circuit(
+                Path("circuits/polynomial.circom"),
+                output_dir=build_dir,
+                power=4,
+                entropy="test",
+            )
+
+            proof = prove_groth16_inputs(
+                Path("circuits/polynomial.circom"),
+                {"x": 9, "y": 113},
+                build_dir=build_dir,
+                output_dir=proof_dir,
+            )
+
+            self.assertTrue(proof.proof_path.exists())
+            self.assertTrue(proof.public_path.exists())
+            self.assertTrue(
+                verify_groth16_proof(
+                    Path("circuits/polynomial.circom"),
+                    proof,
+                    build_dir=build_dir,
+                )
+            )
+
+    def test_cli_sets_up_proves_and_verifies(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            build_dir = Path(temp_dir) / "build"
+            proof_dir = Path(temp_dir) / "proofs"
+
+            setup_exit_code = _run_cli(
+                [
+                    "setup",
+                    "circuits/polynomial.circom",
+                    "--out-dir",
+                    str(build_dir),
+                    "--power",
+                    "4",
+                    "--entropy",
+                    "test",
+                ]
+            )
+
+            self.assertEqual(setup_exit_code, 0)
 
             prove_exit_code = _run_cli(
                 [
                     "prove",
-                    "circuits/inputs/polynomial_valid.json",
-                    "circuits/polynomial.wasm",
-                    "circuits/polynomial.groth16.zkey",
-                    str(proof_path),
-                    str(public_path),
+                    "circuits/polynomial.circom",
+                    "--input",
+                    '{"x": 9, "y": 113}',
+                    "--build-dir",
+                    str(build_dir),
+                    "--out-dir",
+                    str(proof_dir),
                 ]
             )
 
             self.assertEqual(prove_exit_code, 0)
-            self.assertTrue(proof_path.exists())
-            self.assertTrue(public_path.exists())
+            self.assertTrue((proof_dir / "proof.json").exists())
+            self.assertTrue((proof_dir / "proof.public.json").exists())
 
             verify_exit_code = _run_cli(
                 [
                     "verify",
-                    "circuits/polynomial.groth16.vkey.json",
-                    str(public_path),
-                    str(proof_path),
+                    "circuits/polynomial.circom",
+                    "--proof",
+                    str(proof_dir / "proof.json"),
+                    "--public",
+                    str(proof_dir / "proof.public.json"),
+                    "--build-dir",
+                    str(build_dir),
                 ]
             )
 
             self.assertEqual(verify_exit_code, 0)
 
-    def test_cli_rejects_invalid_polynomial_input(self) -> None:
+    def test_python_api_rejects_invalid_input(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            proof_path = Path(temp_dir) / "proof.json"
-            public_path = Path(temp_dir) / "public.json"
+            build_dir = Path(temp_dir) / "build"
+            proof_dir = Path(temp_dir) / "proofs"
 
-            prove_exit_code = _run_cli(
-                [
-                    "prove",
-                    "circuits/inputs/polynomial_invalid.json",
-                    "circuits/polynomial.wasm",
-                    "circuits/polynomial.groth16.zkey",
-                    str(proof_path),
-                    str(public_path),
-                ]
+            setup_groth16_circuit(
+                Path("circuits/polynomial.circom"),
+                output_dir=build_dir,
+                power=4,
+                entropy="test",
             )
 
-            self.assertEqual(prove_exit_code, 2)
-            self.assertFalse(proof_path.exists())
-            self.assertFalse(public_path.exists())
+            with self.assertRaises(ZKCircuitRunnerError):
+                prove_groth16_inputs(
+                    Path("circuits/polynomial.circom"),
+                    {"x": 9, "y": 114},
+                    build_dir=build_dir,
+                    output_dir=proof_dir,
+                )
 
-    def test_cli_exports_verification_key(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            verification_key_path = Path(temp_dir) / "vkey.json"
+    def test_verifier_rejects_invalid_proof(self) -> None:
+        proof = ProofArtifacts(
+            proof_path=Path("missing-proof.json"),
+            public_path=Path("missing-public.json"),
+        )
 
-            exit_code = _run_cli(
-                [
-                    "export-vkey",
-                    "circuits/polynomial.groth16.zkey",
-                    str(verification_key_path),
-                ]
-            )
-
-            self.assertEqual(exit_code, 0)
-            self.assertTrue(verification_key_path.exists())
+        with self.assertRaises(ZKCircuitRunnerError):
+            verify_groth16_proof(Path("circuits/polynomial.circom"), proof)
 
 
 def _run_cli(argv: list[str]) -> int:

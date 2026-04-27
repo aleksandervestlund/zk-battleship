@@ -1,134 +1,75 @@
 # Applied Cryptography Project
 
-## Setup
+The ZK helper is Python-centric: keep Circom source files in `circuits/`, then
+let `source.zk_circuit_runner` compile, set up, prove, and verify. You should
+not need to hand-write input JSON files or manually pass around `.wasm`,
+`.zkey`, or verification key paths.
 
-Install the Python dependencies you need for development:
+Install dependencies once:
 
 ```bash
 pip install -r requirements/dev.txt
-```
-
-This project uses `snarkjs` as a local Node development dependency for
-Groth16 proving and verification. Install Node.js 18 or newer, then install
-the local npm dependencies:
-
-```bash
 npm install
 ```
 
-Check that the local `snarkjs` CLI is available:
+## Command Line End-to-End
+
+Compile and set up a circuit:
 
 ```bash
-npx --no-install snarkjs --help
+python3 -m source.zk_circuit_runner setup circuits/polynomial.circom
 ```
 
-## ZK Proof Helpers
-
-The Python wrapper lives in `source/zk_circuit_runner.py`. It calls the
-repo-local `snarkjs` CLI through `npx --no-install`, so it will use the
-version pinned in `package-lock.json`.
-
-## Example Circuit
-
-The repo includes `circuits/polynomial.circom`, a simple arithmetic proof:
-
-```circom
-pragma circom 2.1.6;
-
-template Polynomial() {
-    signal input x;
-    signal input y;
-
-    y === x * x + 3 * x + 5;
-}
-
-component main { public [y] } = Polynomial();
-```
-
-This proves knowledge of a private `x` such that public `y = x^2 + 3x + 5`.
-For `circuits/inputs/polynomial_valid.json`, the prover knows `x = 9` and
-claims public `y = 113`.
-
-Use zkrepl or a local Circom setup to compile `circuits/polynomial.circom` and
-generate these artifacts:
+This writes generated files under `circuits/build/polynomial/`, including:
 
 ```text
-circuits/polynomial.wasm
-circuits/polynomial.groth16.zkey
-circuits/polynomial.groth16.vkey.json
+artifacts.json
+polynomial.wasm
+polynomial.groth16.zkey
+polynomial.groth16.vkey.json
 ```
 
-Then generate and verify a proof with the Python wrapper:
-
-```python
-from pathlib import Path
-
-from source.zk_circuit_runner import prove_groth16, verify_groth16
-
-
-prove_groth16(
-    input_path=Path("circuits/inputs/polynomial_valid.json"),
-    wasm_path=Path("circuits/polynomial.wasm"),
-    zkey_path=Path("circuits/polynomial.groth16.zkey"),
-    proof_path=Path("circuits/polynomial_proof.json"),
-    public_path=Path("circuits/polynomial_public.json"),
-)
-
-is_valid = verify_groth16(
-    verification_key_path=Path("circuits/polynomial.groth16.vkey.json"),
-    public_path=Path("circuits/polynomial_public.json"),
-    proof_path=Path("circuits/polynomial_proof.json"),
-)
-```
-
-Or run the same flow through the command line:
+Generate a proof by passing input values directly as JSON:
 
 ```bash
 python3 -m source.zk_circuit_runner prove \
-  circuits/inputs/polynomial_valid.json \
-  circuits/polynomial.wasm \
-  circuits/polynomial.groth16.zkey \
-  circuits/polynomial_proof.json \
-  circuits/polynomial_public.json
-
-python3 -m source.zk_circuit_runner verify \
-  circuits/polynomial.groth16.vkey.json \
-  circuits/polynomial_public.json \
-  circuits/polynomial_proof.json
+  circuits/polynomial.circom \
+  --input '{"x": 9, "y": 113}'
 ```
 
-Generate a Groth16 proof:
+Verify the proof:
+
+```bash
+python3 -m source.zk_circuit_runner verify circuits/polynomial.circom
+```
+
+By default, proofs are written to `circuits/build/polynomial/proofs/`.
+
+For local development, `setup` creates a local Powers of Tau file and makes one
+local contribution automatically. That keeps the project easy to run, but it is
+not a production ceremony.
+
+## Python End-to-End
 
 ```python
 from pathlib import Path
 
-from source.zk_circuit_runner import prove_groth16
-
-
-prove_groth16(
-    input_path=Path("circuits/artifacts/input.json"),
-    wasm_path=Path("circuits/artifacts/shot.wasm"),
-    zkey_path=Path("circuits/artifacts/shot.zkey"),
-    proof_path=Path("circuits/artifacts/proof.json"),
-    public_path=Path("circuits/artifacts/public.json"),
+from source.zk_circuit_runner import (
+    prove_groth16_inputs,
+    setup_groth16_circuit,
+    verify_groth16_proof,
 )
-```
-
-Verify a Groth16 proof:
-
-```python
-from pathlib import Path
-
-from source.zk_circuit_runner import verify_groth16
 
 
-is_valid = verify_groth16(
-    verification_key_path=Path("circuits/artifacts/shot.vkey.json"),
-    public_path=Path("circuits/artifacts/public.json"),
-    proof_path=Path("circuits/artifacts/proof.json"),
+circom_path = Path("circuits/polynomial.circom")
+
+setup_groth16_circuit(circom_path)
+
+proof = prove_groth16_inputs(
+    circom_path,
+    {"x": 9, "y": 113},
 )
-```
 
-The prover needs the compiled circuit `.wasm`, the proving key `.zkey`, and
-the private/public input JSON. The verifier needs only the verification key
-JSON, public inputs, and proof JSON.
+is_valid = verify_groth16_proof(circom_path, proof)
+print(is_valid)
+```

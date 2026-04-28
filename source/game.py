@@ -33,8 +33,7 @@ class Game:
     def __post_init__(self) -> None:
         setup_battleship_circuit()
         self.secret = make_secret(
-            self.player.board.committed_coordinate(),
-            salt=randbelow(2**64),
+            self.player.board.committed_coordinate(), salt=randbelow(2**32)
         )
         self.commitment = commitment_for(self.secret)
 
@@ -91,7 +90,6 @@ class Game:
             ui.draw(self.player.board, status="You lost")
             return False
 
-        send(self.player.conn, HIT_STR if hit else MISS_STR)
         return True
 
     def run(self, ui: PygameUI) -> None:

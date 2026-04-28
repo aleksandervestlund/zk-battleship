@@ -33,8 +33,7 @@ class Game:
     def __post_init__(self) -> None:
         setup_battleship_circuit()
         self.secret = make_secret(
-            self.player.board.committed_coordinate(),
-            salt=randbelow(2**64),
+            self.player.board.committed_coordinate(), salt=randbelow(2**32)
         )
         self.commitment = commitment_for(self.secret)
 
@@ -54,11 +53,13 @@ class Game:
 
         send(self.player.conn, str(coordinate))
 
+        ui.draw(self.player.board, status="Verifying opponent's proof...")
         result = verify_hit_response(
             recv(),
             guess=coordinate,
             expected_commitment=self._opponent_commitment(),
         )
+        ui.draw(self.player.board, status="Opponent's proof verified.")
         hit = result in {HIT_STR, LOST_STR}
         self.player.board.check_hit_on_other(coordinate, hit)
 
@@ -77,6 +78,7 @@ class Game:
             if hit and self.check_lost()
             else HIT_STR if hit else MISS_STR
         )
+        ui.draw(self.player.board, status="Generating proof...")
         response = make_hit_response(
             coordinate,
             hit=hit,
@@ -84,6 +86,7 @@ class Game:
             commitment=self._commitment(),
             secret=self._secret(),
         )
+        ui.draw(self.player.board, status="Proof generated.")
         send(self.player.conn, response)
 
         if hit and self.check_lost():
@@ -91,11 +94,12 @@ class Game:
             ui.draw(self.player.board, status="You lost")
             return False
 
-        send(self.player.conn, HIT_STR if hit else MISS_STR)
         return True
 
     def run(self, ui: PygameUI) -> None:
+        ui.draw(self.player.board, status="Exchanging commitments...")
         self.exchange_commitments()
+        ui.draw(self.player.board, status="Commitments exchanged.")
         my_go = self.player.is_host
 
         while self.handle_my_go(ui) if my_go else self.handle_opponent_go(ui):

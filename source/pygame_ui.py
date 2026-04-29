@@ -1,7 +1,19 @@
 from collections.abc import Sequence
 
 import pygame
-from pygame import KEYDOWN, MOUSEBUTTONDOWN, QUIT, K_r, Rect, display, draw
+from pygame import (
+    K_ESCAPE,
+    K_RETURN,
+    KEYDOWN,
+    MOUSEBUTTONDOWN,
+    QUIT,
+    K_n,
+    K_r,
+    K_y,
+    Rect,
+    display,
+    draw,
+)
 from pygame.font import SysFont
 from pygame.time import Clock
 
@@ -120,6 +132,22 @@ class PygameUI:
                 if event.type == MOUSEBUTTONDOWN and event.button == 1:
                     if hover_cell is not None:
                         return hover_cell
+
+            self.clock.tick(self.FPS)
+
+    def wait_for_replay(self, board: Board, status: str) -> bool:
+        while True:
+            self.draw(board, status=status)
+
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    return False
+
+                if event.type == KEYDOWN:
+                    if event.key in {K_y, K_RETURN}:
+                        return True
+                    if event.key in {K_n, K_ESCAPE}:
+                        return False
 
             self.clock.tick(self.FPS)
 

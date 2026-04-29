@@ -14,12 +14,39 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CIRCUITS_DIR = REPO_ROOT / "circuits"
 CIRCUIT_BUILD_DIR = CIRCUITS_DIR / "build"
-CIRCOM_COMMAND = (
-    ("circom",)
-    if shutil.which("circom")
-    else ("npx", "--no-install", "circom2")
-)
-SNARKJS_COMMAND = ("npx", "--no-install", "snarkjs")
+WINDOWS = sys.platform == "win32"
+
+
+def _local_node_bin(command: str) -> tuple[str, ...] | None:
+    executable = REPO_ROOT / "node_modules" / ".bin" / (
+        f"{command}.cmd" if WINDOWS else command
+    )
+    if executable.exists():
+        return (str(executable),)
+    return None
+
+
+def _node_tool_command(command: str) -> tuple[str, ...]:
+    return _local_node_bin(command) or (
+        "npx.cmd" if WINDOWS else "npx",
+        "--no-install",
+        command,
+    )
+
+
+def _circom_command() -> tuple[str, ...]:
+    if shutil.which("circom"):
+        return ("circom",)
+
+    windows_launcher = REPO_ROOT / "scripts" / "circom2.js"
+    if WINDOWS and windows_launcher.exists():
+        return ("node", str(windows_launcher))
+
+    return _node_tool_command("circom2")
+
+
+CIRCOM_COMMAND = _circom_command()
+SNARKJS_COMMAND = _node_tool_command("snarkjs")
 MANIFEST_FILENAME = "artifacts.json"
 
 

@@ -2,7 +2,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from source.constants import HIT_STR, LOST_STR, MISS_STR, ROWS
+from source.constants import HIT_STR, LOST_STR, MISS_STR, ROWS, SHIP_LENGTHS
 from source.coordinate import Coordinate
 from source.zk_circuit_runner import (
     ProofPayload,
@@ -15,6 +15,7 @@ from source.zk_circuit_runner import (
 
 
 BATTLESHIP_CIRCUIT = Path("circuits/battleship_hit.circom")
+BOARD_CIRCUIT = Path("circuits/board_commitment.circom")
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,10 +32,31 @@ class BattleshipSecret:
         return coordinate_fields(self.ship_coordinate)[1]
 
 
+@dataclass(frozen=True, slots=True)
+class BoardSecret:
+    start_x: list[int]
+    start_y: list[int]
+    dir: list[int]
+    salt: int
+
+    def __post_init__(self) -> None:
+        if not (len(self.start_x) == len(self.start_y) == len(self.dir) == 5):
+            raise ValueError(
+                "BoardSecret start_x, start_y, and dir must be length 5"
+            )
+        if any(d not in {0, 1} for d in self.dir):
+            raise ValueError("BoardSecret dir values must be 0 or 1")
+
+
 def setup_battleship_circuit() -> None:
     """Ensure the Battleship hit circuit has proving artifacts."""
     if not manifest_path_for(BATTLESHIP_CIRCUIT).exists():
         setup_groth16_circuit(BATTLESHIP_CIRCUIT)
+
+
+def setup_board_circuit() -> None:
+    if not manifest_path_for(BOARD_CIRCUIT).exists():
+        setup_groth16_circuit(BOARD_CIRCUIT)
 
 
 def make_secret(
@@ -129,3 +151,81 @@ def poseidon_hash(*values: int) -> str:
     if result.returncode != 0:
         raise ZKCircuitRunnerError(result.stderr.strip())
     return result.stdout.strip()
+
+
+def board_commitment_for(secret: BoardSecret) -> str:
+    flat: list[int] = []
+
+    for i in range(5):
+        flat.append(secret.start_x[i])
+        flat.append(secret.start_y[i])
+        flat.append(secret.dir[i])
+
+    flat.append(secret.salt)
+    return poseidon_hash(*flat)
+
+
+def validate_ship(sx: int, sy: int, length: int, direction: int) -> bool:
+    ex = sx + length - 1 if direction == 0 else sx
+    ey = sy + length - 1 if direction == 1 else sy
+    return 1 <= sx <= 10 and 1 <= sy <= 10 and 1 <= ex <= 10 and 1 <= ey <= 10
+
+
+def validate_no_overlap(secret: BoardSecret) -> bool:
+    grid: set[tuple[int, int]] = set()
+
+    for i in range(5):
+        x, y = secret.start_x[i], secret.start_y[i]
+        d = secret.dir[i]
+        l = SHIP_LENGTHS[i]
+
+        for j in range(l):
+            cx = x + j if d == 0 else x
+            cy = y + j if d == 1 else y
+
+            if (cx, cy) in grid:
+                return False
+
+            grid.add((cx, cy))
+
+    return True
+
+
+def prove_board(secret: BoardSecret) -> str:
+    if not all(
+        validate_ship(
+            secret.start_x[i],
+            secret.start_y[i],
+            SHIP_LENGTHS[i],
+            secret.dir[i],
+        )
+        for i in range(5)
+    ):
+        raise ValueError("Invalid ship placement")
+    if not validate_no_overlap(secret):
+        raise ValueError("Overlapping ships")
+
+    setup_board_circuit()
+
+    payload = prove_groth16_payload(
+        BOARD_CIRCUIT,
+        {
+            "privStartX": secret.start_x,
+            "privStartY": secret.start_y,
+            "privDirections": secret.dir,
+            "privSalt": secret.salt,
+            "pubBoardCommitment": board_commitment_for(secret),
+        },
+    )
+    return payload.to_json()
+
+
+def verify_board(raw_response: str, expected_commitment: str) -> None:
+    setup_board_circuit()
+    payload = ProofPayload.from_json(raw_response)
+    payload.require_public_inputs([expected_commitment])
+
+    if not verify_groth16_payload(BOARD_CIRCUIT, payload):
+        raise ZKCircuitRunnerError("invalid board proof")
+
+    print("Board proof verified!")

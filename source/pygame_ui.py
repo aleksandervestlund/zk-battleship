@@ -6,6 +6,7 @@ from pygame.font import SysFont
 from pygame.time import Clock
 
 from source.board import Board
+from source.commitment_status import CommitmentStatus
 from source.constants import N_COLS, N_ROWS, OTHER_BOARD, OWN_BOARD
 from source.coordinate import Coordinate
 from source.orientation import Orientation
@@ -86,6 +87,7 @@ class PygameUI:
         board: Board,
         status: str = "",
         hover_other: tuple[int, int] | None = None,
+        commitment_status: CommitmentStatus | None = None,
     ) -> None:
         self._fill_background()
         self._draw_board(
@@ -103,15 +105,26 @@ class PygameUI:
             text = self.font.render(status, True, (240, 240, 240))
             self.screen.blit(text, (self.PAD, 8))
 
+        if commitment_status is not None:
+            self._draw_commitment_status(commitment_status)
+
         display.flip()
         self.clock.tick(self.FPS)
 
     def wait_for_target_click(
-        self, board: Board, status: str = ""
+        self,
+        board: Board,
+        status: str = "",
+        commitment_status: CommitmentStatus | None = None,
     ) -> tuple[int, int] | None:
         while True:
             hover_cell = self._hoverable_other_cell(board)
-            self.draw(board, status=status, hover_other=hover_cell)
+            self.draw(
+                board,
+                status=status,
+                hover_other=hover_cell,
+                commitment_status=commitment_status,
+            )
 
             for event in pygame.event.get():
                 if event.type == QUIT:
@@ -243,6 +256,34 @@ class PygameUI:
         if square == Square.SHIP and not hide_ships:
             return 70, 190, 120
         return 36, 48, 66
+
+    def _draw_commitment_status(
+        self, commitment_status: CommitmentStatus
+    ) -> None:
+        box_size = 16
+        box_padding = 4
+        screen_width = self.screen.get_width()
+        box_x = screen_width - self.PAD - box_size - box_padding
+        box_y = 8
+
+        if commitment_status == CommitmentStatus.PENDING:
+            color = (255, 200, 0)  # Yellow
+            label = "ZKP: Pending"
+        elif commitment_status == CommitmentStatus.VERIFIED:
+            color = (50, 200, 80)  # Green
+            label = "ZKP: Verified"
+        elif commitment_status == CommitmentStatus.FAILED:
+            color = (220, 70, 70)  # Red
+            label = "ZKP: Failed"
+        else:
+            raise ValueError("Invalid commitment status")
+
+        rect = Rect(box_x, box_y, box_size, box_size)
+        draw.rect(self.screen, color, rect)
+        draw.rect(self.screen, (200, 200, 200), rect, width=1)
+
+        text = self.small.render(label, True, color)
+        self.screen.blit(text, (box_x - 110, box_y + 2))
 
     @staticmethod
     def _hover_color(color: tuple[int, int, int]) -> tuple[int, int, int]:

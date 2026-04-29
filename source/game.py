@@ -12,8 +12,12 @@ from source.battleship_zk import (
 from source.client import recv, send
 from source.constants import (
     HIT_STR,
+    LOST_MSG,
     LOST_STR,
     MISS_STR,
+    QUIT_STR,
+    REPLAY_MSG,
+    REPLAY_STR,
     ROWS,
     TURN_MSG,
     WIN_MSG,
@@ -40,13 +44,13 @@ class Game:
     def check_lost(self) -> bool:
         return self.player.board.check_all_ships_sunk()
 
-    def handle_my_go(self, ui: PygameUI) -> bool:
+    def handle_my_go(self, ui: PygameUI) -> str:
         if (
             choice := ui.wait_for_target_click(
                 self.player.board, status=TURN_MSG
             )
         ) is None:
-            return False
+            return "quit"
 
         row, col = choice
         coordinate = Coordinate(ROWS[row], col + 1)
@@ -65,10 +69,10 @@ class Game:
 
         if result == LOST_STR:
             ui.draw(self.player.board, status=WIN_MSG)
-            return False
-        return True
+            return "won"
+        return "continue"
 
-    def handle_opponent_go(self, ui: PygameUI) -> bool:
+    def handle_opponent_go(self, ui: PygameUI) -> str:
         ui.draw(self.player.board, status="Waiting for opponent...")
 
         coordinate = Coordinate.from_str(recv())
@@ -90,20 +94,39 @@ class Game:
         send(self.player.conn, response)
 
         if hit and self.check_lost():
-            send(self.player.conn, LOST_STR)
-            ui.draw(self.player.board, status="You lost")
-            return False
+            ui.draw(self.player.board, status=LOST_MSG)
+            return "lost"
 
-        return True
+        return "continue"
 
-    def run(self, ui: PygameUI) -> None:
+    def run(self, ui: PygameUI, *, starter_is_my_turn: bool) -> bool:
         ui.draw(self.player.board, status="Exchanging commitments...")
         self.exchange_commitments()
         ui.draw(self.player.board, status="Commitments exchanged.")
-        my_go = self.player.is_host
 
-        while self.handle_my_go(ui) if my_go else self.handle_opponent_go(ui):
-            my_go = not my_go
+        my_go = starter_is_my_turn
+        round_result = "continue"
+
+        while round_result == "continue":
+            round_result = (
+                self.handle_my_go(ui) if my_go else self.handle_opponent_go(ui)
+            )
+            if round_result == "continue":
+                my_go = not my_go
+
+        if round_result == "quit":
+            return False
+
+        return self._agree_to_replay(ui, round_result)
+
+    def _agree_to_replay(self, ui: PygameUI, round_result: str) -> bool:
+        prompt = (
+            f"{WIN_MSG if round_result == 'won' else LOST_MSG} {REPLAY_MSG}"
+        )
+        wants_replay = ui.wait_for_replay(self.player.board, status=prompt)
+        send(self.player.conn, REPLAY_STR if wants_replay else QUIT_STR)
+        opponent_wants_replay = recv() == REPLAY_STR
+        return wants_replay and opponent_wants_replay
 
     def exchange_commitments(self) -> None:
         send(self.player.conn, self._commitment())

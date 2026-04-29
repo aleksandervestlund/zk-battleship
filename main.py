@@ -9,12 +9,19 @@ def main() -> None:
     ui = PygameUI()
 
     try:
-        if (ships := ui.place_ship(SHIP_LENGTHS[-1])) is None:
-            return
+        starter_is_my_turn = player.is_host
 
-        player.set_ships(ships)
-        game = Game(player)
-        game.run(ui)
+        while True:
+            if (ships := ui.place_ship(SHIP_LENGTHS[-1])) is None:
+                return
+
+            player.set_ships(ships)
+            game = Game(player)
+
+            if not game.run(ui, starter_is_my_turn=starter_is_my_turn):
+                return
+
+            starter_is_my_turn = not starter_is_my_turn
     finally:
         ui.close()
 

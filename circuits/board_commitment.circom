@@ -91,38 +91,38 @@ template BoardCommitment() {
     component eqXFlat[136];
     component eqYFlat[136];
     signal sameFlat[136];
-    var pairIdx = 0;
+    idx = 0;
 
     for (var a = 0; a < 17; a++) {
         for (var b = a + 1; b < 17; b++) {
-            eqXFlat[pairIdx] = IsEqual();
-            eqXFlat[pairIdx].in[0] <== cellsX[a];
-            eqXFlat[pairIdx].in[1] <== cellsX[b];
+            eqXFlat[idx] = IsEqual();
+            eqXFlat[idx].in[0] <== cellsX[a];
+            eqXFlat[idx].in[1] <== cellsX[b];
 
-            eqYFlat[pairIdx] = IsEqual();
-            eqYFlat[pairIdx].in[0] <== cellsY[a];
-            eqYFlat[pairIdx].in[1] <== cellsY[b];
+            eqYFlat[idx] = IsEqual();
+            eqYFlat[idx].in[0] <== cellsY[a];
+            eqYFlat[idx].in[1] <== cellsY[b];
 
-            sameFlat[pairIdx] <== eqXFlat[pairIdx].out * eqYFlat[pairIdx].out;
-            sameFlat[pairIdx] === 0;
+            sameFlat[idx] <== eqXFlat[idx].out * eqYFlat[idx].out;
+            sameFlat[idx] === 0;
 
-            pairIdx++;
+            idx++;
         }
     }
 
     component hasher = Poseidon(16);
-    var k = 0;
+    idx = 0;
 
     for (var i = 0; i < 5; i++) {
-        hasher.inputs[k] <== privStartX[i];
-        k++;
-        hasher.inputs[k] <== privStartY[i];
-        k++;
-        hasher.inputs[k] <== privDirections[i];
-        k++;
+        hasher.inputs[idx] <== privStartX[i];
+        idx++;
+        hasher.inputs[idx] <== privStartY[i];
+        idx++;
+        hasher.inputs[idx] <== privDirections[i];
+        idx++;
     }
 
-    hasher.inputs[k] <== privSalt;
+    hasher.inputs[idx] <== privSalt;
     pubBoardCommitment === hasher.out;
 }
 

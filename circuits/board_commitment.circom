@@ -114,9 +114,12 @@ template BoardCommitment() {
     var k = 0;
 
     for (var i = 0; i < 5; i++) {
-        hasher.inputs[k] <== privStartX[i]; k++;
-        hasher.inputs[k] <== privStartY[i]; k++;
-        hasher.inputs[k] <== privDirections[i]; k++;
+        hasher.inputs[k] <== privStartX[i];
+        k++;
+        hasher.inputs[k] <== privStartY[i];
+        k++;
+        hasher.inputs[k] <== privDirections[i];
+        k++;
     }
 
     hasher.inputs[k] <== privSalt;

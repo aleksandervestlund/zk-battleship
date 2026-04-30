@@ -88,22 +88,25 @@ template BoardCommitment() {
         }
     }
 
-    component eqX[17][17];
-    component eqY[17][17];
-    signal same[17][17];
+    component eqXFlat[136];
+    component eqYFlat[136];
+    signal sameFlat[136];
+    var pairIdx = 0;
 
-    for (var x = 0; x < 17; x++) {
-        for (var y = x + 1; y < 17; y++) {
-            eqX[x][y] = IsEqual();
-            eqX[x][y].in[0] <== cellsX[x];
-            eqX[x][y].in[1] <== cellsX[y];
+    for (var a = 0; a < 17; a++) {
+        for (var b = a + 1; b < 17; b++) {
+            eqXFlat[pairIdx] = IsEqual();
+            eqXFlat[pairIdx].in[0] <== cellsX[a];
+            eqXFlat[pairIdx].in[1] <== cellsX[b];
 
-            eqY[x][y] = IsEqual();
-            eqY[x][y].in[0] <== cellsY[x];
-            eqY[x][y].in[1] <== cellsY[y];
+            eqYFlat[pairIdx] = IsEqual();
+            eqYFlat[pairIdx].in[0] <== cellsY[a];
+            eqYFlat[pairIdx].in[1] <== cellsY[b];
 
-            same[x][y] <== eqX[x][y].out * eqY[x][y].out;
-            same[x][y] === 0;
+            sameFlat[pairIdx] <== eqXFlat[pairIdx].out * eqYFlat[pairIdx].out;
+            sameFlat[pairIdx] === 0;
+
+            pairIdx++;
         }
     }
 

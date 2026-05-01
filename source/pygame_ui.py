@@ -34,6 +34,13 @@ class PygameUI:
     LABEL_GAP = 22
     TOP_OFFSET = 88
     INSPECTOR_HEIGHT = 130
+    SHIP_COLORS = [
+        (70, 190, 120),
+        (200, 120, 60),
+        (110, 150, 220),
+        (190, 70, 180),
+        (220, 200, 80),
+    ]
 
     def __init__(self) -> None:
         pygame.init()
@@ -68,10 +75,9 @@ class PygameUI:
         pygame.quit()
 
     def pump_events(self) -> bool:
-        for event in pygame.event.get():
-            if not self._handle_common_event(event):
-                return False
-        return True
+        return all(
+            self._handle_common_event(event) for event in pygame.event.get()
+        )
 
     def set_proof_lines(self, lines: Sequence[str]) -> None:
         self.proof_lines = list(lines)
@@ -126,6 +132,7 @@ class PygameUI:
                 OWN_BOARD,
                 placed_ships=placed,
                 preview_ship=candidate,
+                preview_index=len(placed),
             )
             display.flip()
             self.clock.tick(self.FPS)
@@ -138,7 +145,11 @@ class PygameUI:
     ) -> None:
         self._fill_background()
         self._draw_board(
-            board.self_view, self.left_origin, OWN_BOARD, hide_ships=False
+            board.self_view,
+            self.left_origin,
+            OWN_BOARD,
+            hide_ships=False,
+            placed_ships=board.ships,
         )
         self._draw_board(
             board.other_view,
@@ -195,16 +206,52 @@ class PygameUI:
         title: str,
         hide_ships: bool,
         hover_cell: tuple[int, int] | None = None,
+        placed_ships: Sequence[Ship] | None = None,
+        preview_ship: Ship | None = None,
+        preview_index: int | None = None,
     ) -> None:
         ox, oy = origin
         title_surf = self.font.render(title, True, (220, 220, 220))
         self.screen.blit(title_surf, (ox, oy - 54))
         self._draw_grid_labels(origin)
+        ship_color_map: dict[tuple[int, int], tuple[int, int, int]] = {}
+
+        if placed_ships:
+            for idx, ship in enumerate(placed_ships):
+                color = self.SHIP_COLORS[idx % len(self.SHIP_COLORS)]
+
+                for coordinate in ship.hits:
+                    ship_color_map[coordinate.to_idx()] = color
+
+        preview_coords: set[tuple[int, int]] = set()
+
+        if preview_ship is not None:
+            for coordinate in preview_ship.hits:
+                preview_coords.add(coordinate.to_idx())
+
+        preview_color = None
+
+        if preview_index is not None:
+            preview_color = self.SHIP_COLORS[
+                preview_index % len(self.SHIP_COLORS)
+            ]
+        elif preview_ship is not None:
+            preview_color = self.SHIP_COLORS[0]
 
         for r in range(N_ROWS):
             for c in range(N_COLS):
                 sq = grid[r][c]
-                color = self._color_for_square(sq, hide_ships)
+
+                if sq == Square.SHIP and not hide_ships:
+                    if (r, c) in preview_coords:
+                        base = preview_color or ship_color_map.get(
+                            (r, c), self.SHIP_COLORS[0]
+                        )
+                        color = self._hover_color(base)
+                    else:
+                        color = ship_color_map.get((r, c), self.SHIP_COLORS[0])
+                else:
+                    color = self._color_for_square(sq, hide_ships)
 
                 if hover_cell == (r, c):
                     color = self._hover_color(color)
@@ -224,6 +271,7 @@ class PygameUI:
         title: str,
         placed_ships: Sequence[Ship] | None = None,
         preview_ship: Ship | None = None,
+        preview_index: int | None = None,
     ) -> None:
         grid = [[Square.EMPTY] * N_COLS for _ in range(N_ROWS)]
 
@@ -237,7 +285,15 @@ class PygameUI:
                 row, col = coordinate.to_idx()
                 grid[row][col] = Square.SHIP
 
-        self._draw_board(grid, origin, title, hide_ships=False)
+        self._draw_board(
+            grid,
+            origin,
+            title,
+            hide_ships=False,
+            placed_ships=placed_ships,
+            preview_ship=preview_ship,
+            preview_index=preview_index,
+        )
 
     def _draw_heading(self, title: str, subtitle: str) -> None:
         title_surface = self.font.render(title, True, (240, 240, 240))

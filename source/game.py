@@ -9,7 +9,7 @@ from source.battleship_zk import (
     make_board_secret_2,
     make_hit_response2,
     prove_board2,
-    setup_battleship_circuit,
+    setup_battleship_circuit_2,
     verify_board2,
     verify_hit_response2,
 )
@@ -50,23 +50,7 @@ class Game:
     initial_proof: str | None = None
 
     def __post_init__(self) -> None:
-        setup_battleship_circuit()
-        shipx_coords = [
-            ROWS.index(coord.row) + 1
-            for ship in self.player.ships
-            for coord in ship.hits
-        ]
-        shipy_coords = [
-            coord.column
-            for ship in self.player.ships
-            for coord in ship.hits
-        ]
-        salt = randbelow(2**32)
-        self.secret = make_board_secret_2(
-            ships_x=shipx_coords, ships_y=shipy_coords, salt=salt
-        )
-        self.initial_proof = prove_board2(self.secret)
-        self.commitment = json.loads(self.initial_proof)["public"][0]
+        setup_battleship_circuit_2()
 
     def check_lost(self) -> bool:
         return self.player.board.check_all_ships_sunk()
@@ -208,8 +192,11 @@ class Game:
                 inspector_result,
                 f"Proof generated in {generate_seconds:.2f}s",
                 f"Commitment used: {self._short(self._commitment())}",
-                "Verifier should reject tampering." if ui.cheat_mode
-                else "Verifier can check this without seeing your ship.",
+                (
+                    "Verifier should reject tampering."
+                    if ui.cheat_mode
+                    else "Verifier can check this without seeing your ship."
+                ),
             ]
         )
         ui.draw(self.player.board, status="Proof generated.")
@@ -253,13 +240,11 @@ class Game:
         return self._agree_to_replay(ui, round_result)
 
     def _agree_to_replay(self, ui: PygameUI, round_result: str) -> bool:
-        if round_result == "rejected":
-            prompt = f"Proof rejected! {REPLAY_MSG}"
-        else:
-            prompt = (
-                f"{WIN_MSG if round_result == 'won' else LOST_MSG} "
-                f"{REPLAY_MSG}"
-            )
+        prompt = (
+            f"Proof rejected! {REPLAY_MSG}"
+            if round_result == "rejected"
+            else f"{WIN_MSG if round_result == 'won' else LOST_MSG} {REPLAY_MSG}"
+        )
         wants_replay = ui.wait_for_replay(self.player.board, status=prompt)
         send(self.player.conn, REPLAY_STR if wants_replay else QUIT_STR)
         raw_replay = self._recv_with_ui(
@@ -271,6 +256,21 @@ class Game:
         return wants_replay and opponent_wants_replay
 
     def exchange_commitments(self, ui: PygameUI) -> bool:
+        shipx_coords = [
+            ROWS.index(coord.row) + 1
+            for ship in self.player.ships
+            for coord in ship.hits
+        ]
+        shipy_coords = [
+            coord.column for ship in self.player.ships for coord in ship.hits
+        ]
+        salt = randbelow(2**32)
+        self.secret = make_board_secret_2(
+            ships_x=shipx_coords, ships_y=shipy_coords, salt=salt
+        )
+        self.initial_proof = prove_board2(self.secret)
+        self.commitment = json.loads(self.initial_proof)["public"][0]
+
         send(self.player.conn, self._commitment())
         self.opponent_commitment = self._recv_with_ui(
             ui, status="Exchanging commitments..."

@@ -7,10 +7,11 @@ from source.ship import Ship
 
 def main() -> None:
     player = Player()
-    ui = PygameUI()
+    is_host = player.is_host
+    ui = PygameUI(window_on_left=is_host)
 
     try:
-        starter_is_my_turn = player.is_host
+        starter_is_my_turn = is_host
 
         while True:
             ships: list[Ship] = []

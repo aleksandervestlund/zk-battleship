@@ -7,3 +7,4 @@
 **/circuits/build/*
 **/circuits/proofs/*
 **/node_modules/*
+**/tmp/*

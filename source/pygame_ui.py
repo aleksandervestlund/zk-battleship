@@ -51,7 +51,7 @@ class PygameUI:
     def close(self) -> None:
         pygame.quit()
 
-    def place_ship(self, ship_length: int) -> list[Ship] | None:
+    def place_ship(self, ship_length: int) -> Ship:
         orientation = Orientation.HORIZONTAL
 
         while True:
@@ -61,8 +61,8 @@ class PygameUI:
             candidate = self._ship_for_cell(hovered, orientation, ship_length)
 
             for event in pygame.event.get():
-                if event.type == QUIT:
-                    return None
+                # if event.type == QUIT:
+                #     return None
                 if event.type == KEYDOWN and event.key == K_r:
                     orientation = (
                         Orientation.VERTICAL
@@ -74,7 +74,7 @@ class PygameUI:
                     and event.button == 1
                     and candidate is not None
                 ):
-                    return [candidate]
+                    return candidate
 
             self._fill_background()
             orient_label = (

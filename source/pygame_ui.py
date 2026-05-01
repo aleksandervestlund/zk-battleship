@@ -1,3 +1,4 @@
+import os
 from collections.abc import Sequence
 
 import pygame
@@ -15,6 +16,7 @@ from pygame import (
     display,
     draw,
 )
+from pygame.display import Info
 from pygame.font import SysFont
 from pygame.time import Clock
 
@@ -30,10 +32,12 @@ class PygameUI:
     CELL = 40
     PAD = 24
     GAP = 80
+    RIGHT_PADDING = 24
+    BOTTOM_MARGIN = 80
     FPS = 60
     LABEL_GAP = 22
     TOP_OFFSET = 88
-    INSPECTOR_HEIGHT = 130
+    INSPECTOR_HEIGHT = 160
     SHIP_COLORS = [
         (70, 190, 120),
         (200, 120, 60),
@@ -42,27 +46,133 @@ class PygameUI:
         (220, 200, 80),
     ]
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        show_self_on_left: bool = True,
+        window_on_left: bool | None = None,
+    ) -> None:
         pygame.init()
         font_name = self._font_name()
         self.font = SysFont(font_name, 20)
         self.small = SysFont(font_name, 16)
-
+        self.show_self_on_left = show_self_on_left
+        self.window_on_left = window_on_left
         board_w = N_COLS * self.CELL
         board_h = N_ROWS * self.CELL
-        width = self.PAD * 2 + board_w * 2 + self.GAP
-        height = self.PAD * 2 + board_h + 124 + self.INSPECTOR_HEIGHT
+
+        info = Info()
+        screen_w = info.current_w
+        screen_h = info.current_h
+
+        natural_width = (
+            self.PAD * 2 + board_w * 2 + self.GAP + self.RIGHT_PADDING
+        )
+        natural_height_needed = (
+            self.PAD * 2 + board_h + 124 + self.INSPECTOR_HEIGHT
+        )
+        available_screen_h = (
+            screen_h - self.BOTTOM_MARGIN if screen_h else None
+        )
+        height = (
+            min(available_screen_h, natural_height_needed)
+            if available_screen_h is not None
+            else natural_height_needed
+        )
+        half_w = max(200, screen_w // 2) if screen_w else natural_width
+        width = half_w
+
+        if natural_width > half_w and screen_w:
+            available_for_boards = max(100, half_w - (self.PAD * 2 + self.GAP))
+            new_cell = max(10, available_for_boards // (2 * N_COLS))
+            self.CELL = new_cell
+            board_w = N_COLS * self.CELL
+            natural_width = self.PAD * 2 + board_w * 2 + self.GAP
+            width = min(natural_width, half_w)
+
+        self.max_label_width = max(self.small.size(r)[0] for r in ROWS)
+        self.label_reserve = self.max_label_width + 6
+
+        req = self.total_required_width(self.CELL)
+
+        if req > width and screen_w:
+            avail_for_two_boards = width - (
+                self.PAD
+                + self.LABEL_GAP
+                + self.label_reserve
+                + self.GAP
+                + self.PAD
+                + self.RIGHT_PADDING
+            )
+            if avail_for_two_boards > 0:
+                new_cell = max(10, avail_for_two_boards // (2 * N_COLS))
+            else:
+                new_cell = 10
+            self.CELL = new_cell
+            board_w = N_COLS * self.CELL
+            req = self.total_required_width(self.CELL)
+
+            if req > width:
+                width = req
+
+        if self.window_on_left is True:
+            x = 0
+        elif self.window_on_left is False:
+            x = screen_w - width if screen_w else 0
+        else:
+            pid = os.getpid()
+            x = 0 if (pid % 2 == 0) else screen_w - width if screen_w else 0
+
+        y = (
+            0
+            if height == screen_h
+            else max(0, (screen_h - height) // 2) if screen_h else 0
+        )
+        os.environ["SDL_VIDEO_WINDOW_POS"] = f"{x},{y}"
 
         self.screen = display.set_mode((width, height))
         display.set_caption("Battleship")
         self.clock = Clock()
 
+        self.max_label_width = max(self.small.size(r)[0] for r in ROWS)
+        self.label_reserve = self.max_label_width + 6
         self.left_origin = (
-            self.PAD + self.LABEL_GAP,
+            self.PAD + self.LABEL_GAP + self.label_reserve,
             self.PAD + self.TOP_OFFSET + self.LABEL_GAP,
         )
+
+        screen_w = self.screen.get_width()
+        right_x = (
+            screen_w
+            - (self.PAD + self.RIGHT_PADDING)
+            - board_w
+            - self.LABEL_GAP
+        )
+        default_right_x = self.left_origin[0] + board_w + self.GAP
+        if (
+            default_right_x + board_w + self.PAD + self.RIGHT_PADDING
+            <= screen_w
+        ):
+            right_x = default_right_x
+
+        min_right_x = (
+            self.left_origin[0] + board_w + self.GAP + self.label_reserve
+        )
+
+        if right_x < min_right_x:
+            right_x_candidate = (
+                screen_w
+                - (self.PAD + self.RIGHT_PADDING)
+                - board_w
+                - self.LABEL_GAP
+            )
+
+            if right_x_candidate >= min_right_x:
+                right_x = right_x_candidate
+            else:
+                right_x = min_right_x
+
         self.right_origin = (
-            self.PAD + self.LABEL_GAP + board_w + self.GAP,
+            right_x,
             self.PAD + self.TOP_OFFSET + self.LABEL_GAP,
         )
         self.proof_lines = [
@@ -70,6 +180,19 @@ class PygameUI:
             "Commitments and proof results will appear here.",
         ]
         self.cheat_mode = False
+
+    def total_required_width(self, cell_size: int) -> int:
+        b_w = N_COLS * cell_size
+        return (
+            self.PAD
+            + self.LABEL_GAP
+            + self.label_reserve
+            + b_w
+            + self.GAP
+            + b_w
+            + self.PAD
+            + self.RIGHT_PADDING
+        )
 
     def close(self) -> None:
         pygame.quit()
@@ -161,6 +284,7 @@ class PygameUI:
 
         if status:
             self._draw_status_lines(status)
+
         self._draw_proof_inspector()
 
         display.flip()
@@ -317,7 +441,7 @@ class PygameUI:
         rect = Rect(
             self.PAD,
             y,
-            self.screen.get_width() - self.PAD * 2,
+            self.screen.get_width() - self.PAD * 2 - self.RIGHT_PADDING,
             self.INSPECTOR_HEIGHT,
         )
         draw.rect(self.screen, (24, 30, 40), rect)
@@ -419,7 +543,7 @@ class PygameUI:
 
         for row, row_label in enumerate(ROWS):
             label = self.small.render(row_label, True, label_color)
-            x = ox - self.LABEL_GAP
+            x = ox - self.LABEL_GAP - label.get_width()
             y = oy + row * self.CELL + (self.CELL - label.get_height()) // 2
             self.screen.blit(label, (x, y))
 

@@ -114,7 +114,7 @@ class Game:
 
         return "continue"
 
-    def run(self, ui: PygameUI) -> None:
+    def run(self, ui: PygameUI, starter_is_my_turn: bool) -> bool:
         ui.draw(self.player.board, status="Exchanging board proofs...")
         self.exchange_initial_proofs()
         ui.draw(self.player.board, status="Opponent board proofs verified.")

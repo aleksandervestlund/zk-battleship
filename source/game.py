@@ -66,7 +66,7 @@ class Game:
             ships_x=shipx_coords, ships_y=shipy_coords, salt=salt
         )
         self.initial_proof = prove_board2(self.secret)
-        self.commitment = json.loads(self.initial_proof)["public"]
+        self.commitment = json.loads(self.initial_proof)["public"][0]
 
     def check_lost(self) -> bool:
         return self.player.board.check_all_ships_sunk()

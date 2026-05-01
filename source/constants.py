@@ -1,7 +1,8 @@
 from source.role import Role as _Role
 
 
-SHIP_LENGTHS = [5, 4, 3, 3, 2]
+# SHIP_LENGTHS = [5, 4, 3, 3, 2]
+SHIP_LENGTHS = [2,2,3]
 # The current ZK hit circuit proves against one committed coordinate.
 # SHIP_LENGTHS = [1]
 

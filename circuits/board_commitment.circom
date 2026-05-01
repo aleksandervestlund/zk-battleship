@@ -12,11 +12,7 @@ template BoardCommitment() {
 
     var lengths[5] = [5, 4, 3, 3, 2];
 
-    signal cellsX[17];
-    signal cellsY[17];
-
-    var idx = 0;
-
+    component directionCheck[5];
     component gtStartX[5];
     component ltStartX[5];
     component gtStartY[5];
@@ -25,19 +21,17 @@ template BoardCommitment() {
     component ltEndX[5];
     component gtEndY[5];
     component ltEndY[5];
-    component directionCheck[5];
 
     signal endX[5];
     signal endY[5];
+    signal cellsX[17];
+    signal cellsY[17];
 
     for (var i = 0; i < 5; i++) {
         directionCheck[i] = IsEqual();
         directionCheck[i].in[0] <== privDirections[i] * (privDirections[i] - 1);
         directionCheck[i].in[1] <== 0;
         directionCheck[i].out === 1;
-
-        endX[i] <== privStartX[i] + (1 - privDirections[i]) * (lengths[i] - 1);
-        endY[i] <== privStartY[i] + privDirections[i] * (lengths[i] - 1);
 
         gtStartX[i] = GreaterThan(5);
         gtStartX[i].in[0] <== privStartX[i];
@@ -78,7 +72,12 @@ template BoardCommitment() {
         ltEndY[i].in[0] <== endY[i];
         ltEndY[i].in[1] <== 11;
         ltEndY[i].out === 1;
+
+        endX[i] <== privStartX[i] + (1 - privDirections[i]) * (lengths[i] - 1);
+        endY[i] <== privStartY[i] + privDirections[i] * (lengths[i] - 1);
     }
+
+    var idx = 0;
 
     for (var i = 0; i < 5; i++) {
         for (var j = 0; j < lengths[i]; j++) {

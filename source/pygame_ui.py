@@ -4,10 +4,10 @@ import pygame
 from pygame import (
     K_ESCAPE,
     K_RETURN,
-    K_c,
     KEYDOWN,
     MOUSEBUTTONDOWN,
     QUIT,
+    K_c,
     K_n,
     K_r,
     K_y,
@@ -76,20 +76,27 @@ class PygameUI:
     def set_proof_lines(self, lines: Sequence[str]) -> None:
         self.proof_lines = list(lines)
 
-    def place_ship(self, ship_length: int) -> Ship:
+    def place_ship(
+        self, ship_length: int, placed_ships: Sequence[Ship] | None = None
+    ) -> Ship | None:
         orientation = Orientation.HORIZONTAL
+        placed = list(placed_ships or [])
 
         while True:
             hovered = self._grid_cell_from_pos(
                 pygame.mouse.get_pos(), self.left_origin
             )
             candidate = self._ship_for_cell(hovered, orientation, ship_length)
+            if candidate is not None and not self._is_ship_placement_valid(
+                candidate, placed
+            ):
+                candidate = None
 
             for event in pygame.event.get():
                 if not self._handle_common_event(event):
                     return None
-                # if event.type == QUIT:
-                #     return None
+                if event.type == QUIT:
+                    return None
                 if event.type == KEYDOWN and event.key == K_r:
                     orientation = (
                         Orientation.VERTICAL
@@ -115,7 +122,10 @@ class PygameUI:
                 f"({orient_label}).",
             )
             self._draw_board_grid(
-                self.left_origin, OWN_BOARD, preview_ship=candidate
+                self.left_origin,
+                OWN_BOARD,
+                placed_ships=placed,
+                preview_ship=candidate,
             )
             display.flip()
             self.clock.tick(self.FPS)
@@ -212,9 +222,15 @@ class PygameUI:
         self,
         origin: tuple[int, int],
         title: str,
+        placed_ships: Sequence[Ship] | None = None,
         preview_ship: Ship | None = None,
     ) -> None:
         grid = [[Square.EMPTY] * N_COLS for _ in range(N_ROWS)]
+
+        for ship in placed_ships or []:
+            for coordinate in ship.hits:
+                row, col = coordinate.to_idx()
+                grid[row][col] = Square.SHIP
 
         if preview_ship is not None:
             for coordinate in preview_ship.hits:
@@ -313,6 +329,15 @@ class PygameUI:
             )
         except ValueError:
             return None
+
+    @staticmethod
+    def _is_ship_placement_valid(
+        candidate: Ship, placed_ships: Sequence[Ship]
+    ) -> bool:
+        occupied = {
+            coordinate for ship in placed_ships for coordinate in ship.hits
+        }
+        return all(coordinate not in occupied for coordinate in candidate.hits)
 
     @staticmethod
     def _color_for_square(

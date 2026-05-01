@@ -2,6 +2,7 @@ from source.constants import SHIP_LENGTHS
 from source.game import Game
 from source.player import Player
 from source.pygame_ui import PygameUI
+from source.ship import Ship
 
 
 def main() -> None:
@@ -12,7 +13,14 @@ def main() -> None:
         starter_is_my_turn = player.is_host
 
         while True:
-            ships = [ui.place_ship(length) for length in SHIP_LENGTHS]
+            ships: list[Ship] = []
+
+            for length in SHIP_LENGTHS:
+                if (ship := ui.place_ship(length, ships)) is None:
+                    return
+
+                ships.append(ship)
+
             player.set_ships(ships)
             game = Game(player)
 

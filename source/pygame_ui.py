@@ -4,6 +4,7 @@ import pygame
 from pygame import (
     K_ESCAPE,
     K_RETURN,
+    K_c,
     KEYDOWN,
     MOUSEBUTTONDOWN,
     QUIT,
@@ -18,7 +19,7 @@ from pygame.font import SysFont
 from pygame.time import Clock
 
 from source.board import Board
-from source.constants import N_COLS, N_ROWS, OTHER_BOARD, OWN_BOARD
+from source.constants import N_COLS, N_ROWS, OTHER_BOARD, OWN_BOARD, ROWS
 from source.coordinate import Coordinate
 from source.orientation import Orientation
 from source.ship import Ship
@@ -30,26 +31,50 @@ class PygameUI:
     PAD = 24
     GAP = 80
     FPS = 60
+    LABEL_GAP = 22
+    TOP_OFFSET = 88
+    INSPECTOR_HEIGHT = 130
 
     def __init__(self) -> None:
         pygame.init()
-        self.font = SysFont("Menlo", 20)
-        self.small = SysFont("Menlo", 16)
+        font_name = self._font_name()
+        self.font = SysFont(font_name, 20)
+        self.small = SysFont(font_name, 16)
 
         board_w = N_COLS * self.CELL
         board_h = N_ROWS * self.CELL
         width = self.PAD * 2 + board_w * 2 + self.GAP
-        height = self.PAD * 2 + board_h + 70
+        height = self.PAD * 2 + board_h + 124 + self.INSPECTOR_HEIGHT
 
         self.screen = display.set_mode((width, height))
         display.set_caption("Battleship")
         self.clock = Clock()
 
-        self.left_origin = (self.PAD, self.PAD + 40)
-        self.right_origin = (self.PAD + board_w + self.GAP, self.PAD + 40)
+        self.left_origin = (
+            self.PAD + self.LABEL_GAP,
+            self.PAD + self.TOP_OFFSET + self.LABEL_GAP,
+        )
+        self.right_origin = (
+            self.PAD + self.LABEL_GAP + board_w + self.GAP,
+            self.PAD + self.TOP_OFFSET + self.LABEL_GAP,
+        )
+        self.proof_lines = [
+            "Proof Inspector",
+            "Commitments and proof results will appear here.",
+        ]
+        self.cheat_mode = False
 
     def close(self) -> None:
         pygame.quit()
+
+    def pump_events(self) -> bool:
+        for event in pygame.event.get():
+            if not self._handle_common_event(event):
+                return False
+        return True
+
+    def set_proof_lines(self, lines: Sequence[str]) -> None:
+        self.proof_lines = list(lines)
 
     def place_ship(self, ship_length: int) -> Ship:
         orientation = Orientation.HORIZONTAL
@@ -61,6 +86,8 @@ class PygameUI:
             candidate = self._ship_for_cell(hovered, orientation, ship_length)
 
             for event in pygame.event.get():
+                if not self._handle_common_event(event):
+                    return None
                 # if event.type == QUIT:
                 #     return None
                 if event.type == KEYDOWN and event.key == K_r:
@@ -112,8 +139,8 @@ class PygameUI:
         )
 
         if status:
-            text = self.font.render(status, True, (240, 240, 240))
-            self.screen.blit(text, (self.PAD, 8))
+            self._draw_status_lines(status)
+        self._draw_proof_inspector()
 
         display.flip()
         self.clock.tick(self.FPS)
@@ -126,7 +153,7 @@ class PygameUI:
             self.draw(board, status=status, hover_other=hover_cell)
 
             for event in pygame.event.get():
-                if event.type == QUIT:
+                if not self._handle_common_event(event):
                     return None
 
                 if event.type == MOUSEBUTTONDOWN and event.button == 1:
@@ -140,7 +167,7 @@ class PygameUI:
             self.draw(board, status=status)
 
             for event in pygame.event.get():
-                if event.type == QUIT:
+                if not self._handle_common_event(event):
                     return False
 
                 if event.type == KEYDOWN:
@@ -161,7 +188,8 @@ class PygameUI:
     ) -> None:
         ox, oy = origin
         title_surf = self.font.render(title, True, (220, 220, 220))
-        self.screen.blit(title_surf, (ox, oy - 30))
+        self.screen.blit(title_surf, (ox, oy - 54))
+        self._draw_grid_labels(origin)
 
         for r in range(N_ROWS):
             for c in range(N_COLS):
@@ -206,6 +234,32 @@ class PygameUI:
     ) -> None:
         surface = self.small.render(message, True, color)
         self.screen.blit(surface, (self.PAD, self.screen.get_height() - 36))
+
+    def _draw_status_lines(self, status: str) -> None:
+        for index, line in enumerate(status.splitlines()):
+            surface = self.small.render(line, True, (240, 240, 240))
+            self.screen.blit(surface, (self.PAD, 8 + index * 18))
+
+    def _draw_proof_inspector(self) -> None:
+        y = self.screen.get_height() - self.INSPECTOR_HEIGHT - self.PAD
+        rect = Rect(
+            self.PAD,
+            y,
+            self.screen.get_width() - self.PAD * 2,
+            self.INSPECTOR_HEIGHT,
+        )
+        draw.rect(self.screen, (24, 30, 40), rect)
+        draw.rect(self.screen, (68, 78, 96), rect, width=1)
+
+        lines = [
+            *self.proof_lines[:5],
+            f"Demo cheat mode: {'ON' if self.cheat_mode else 'OFF'} "
+            "(press C to toggle)",
+        ]
+        for index, line in enumerate(lines):
+            color = (245, 190, 90) if "REJECTED" in line else (210, 216, 228)
+            surface = self.small.render(line, True, color)
+            self.screen.blit(surface, (rect.x + 12, rect.y + 10 + index * 18))
 
     def _fill_background(self) -> None:
         self.screen.fill((18, 22, 30))
@@ -271,6 +325,36 @@ class PygameUI:
         if square == Square.SHIP and not hide_ships:
             return 70, 190, 120
         return 36, 48, 66
+
+    def _draw_grid_labels(self, origin: tuple[int, int]) -> None:
+        ox, oy = origin
+        label_color = (185, 190, 200)
+
+        for col in range(N_COLS):
+            label = self.small.render(str(col + 1), True, label_color)
+            x = ox + col * self.CELL + (self.CELL - label.get_width()) // 2
+            y = oy - self.LABEL_GAP
+            self.screen.blit(label, (x, y))
+
+        for row, row_label in enumerate(ROWS):
+            label = self.small.render(row_label, True, label_color)
+            x = ox - self.LABEL_GAP
+            y = oy + row * self.CELL + (self.CELL - label.get_height()) // 2
+            self.screen.blit(label, (x, y))
+
+    def _handle_common_event(self, event: pygame.event.Event) -> bool:
+        if event.type == QUIT:
+            return False
+        if event.type == KEYDOWN and event.key == K_c:
+            self.cheat_mode = not self.cheat_mode
+        return True
+
+    @staticmethod
+    def _font_name() -> str:
+        for name in ("Consolas", "Menlo", "Courier New", "monospace"):
+            if pygame.font.match_font(name):
+                return name
+        return pygame.font.get_default_font()
 
     @staticmethod
     def _hover_color(color: tuple[int, int, int]) -> tuple[int, int, int]:

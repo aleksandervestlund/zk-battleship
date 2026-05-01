@@ -70,5 +70,5 @@ def send(conn: socket, msg: str) -> None:
     conn.sendall(f"{msg}\n".encode())
 
 
-def recv() -> str:
-    return incoming.get()
+def recv(timeout: float | None = None) -> str:
+    return incoming.get(timeout=timeout)

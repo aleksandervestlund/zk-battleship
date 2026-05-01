@@ -1,1 +1,2 @@
-pygame==2.6.1
+pygame==2.6.1; platform_system != "Windows" or platform_machine != "ARM64"
+pygame-ce==2.5.7; platform_system == "Windows" and platform_machine == "ARM64"

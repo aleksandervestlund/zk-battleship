@@ -76,7 +76,7 @@ class PygameUI:
     def set_proof_lines(self, lines: Sequence[str]) -> None:
         self.proof_lines = list(lines)
 
-    def place_ship(self, ship_length: int) -> list[Ship] | None:
+    def place_ship(self, ship_length: int) -> Ship:
         orientation = Orientation.HORIZONTAL
 
         while True:
@@ -88,6 +88,8 @@ class PygameUI:
             for event in pygame.event.get():
                 if not self._handle_common_event(event):
                     return None
+                # if event.type == QUIT:
+                #     return None
                 if event.type == KEYDOWN and event.key == K_r:
                     orientation = (
                         Orientation.VERTICAL
@@ -99,7 +101,7 @@ class PygameUI:
                     and event.button == 1
                     and candidate is not None
                 ):
-                    return [candidate]
+                    return candidate
 
             self._fill_background()
             orient_label = (

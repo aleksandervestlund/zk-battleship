@@ -189,7 +189,9 @@ class ProofPayload:
 
     def require_public_inputs(self, expected_public_inputs: list[Any]) -> None:
         expected = [str(value) for value in expected_public_inputs]
+        print(f"Expected public inputs: {expected}")
         actual = [str(value) for value in self.public]
+        print(f"Actual public inputs: {actual}")
         if actual != expected:
             raise ZKCircuitRunnerError("proof public inputs do not match")
 
@@ -388,6 +390,7 @@ def prove_groth16_payload(
     proof_name: str = "proof",
 ) -> ProofPayload:
     """Generate a serializable Groth16 proof payload."""
+    print("proof inputs:",inputs)
     proof = prove_groth16_inputs(
         circom_path,
         inputs,

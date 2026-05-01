@@ -5,12 +5,13 @@ from secrets import randbelow
 from time import perf_counter
 
 from source.battleship_zk import (
-    BattleshipSecret,
-    commitment_for,
-    make_hit_response,
-    make_secret,
+    BoardSecret2,
+    make_board_secret_2,
+    make_hit_response2,
+    prove_board2,
     setup_battleship_circuit,
-    verify_hit_response,
+    verify_board2,
+    verify_hit_response2,
 )
 from source.client import recv, send
 from source.constants import (
@@ -41,18 +42,31 @@ class ProofTiming:
 @dataclass(slots=True)
 class Game:
     player: Player
-    secret: BattleshipSecret | None = None
+    secret: BoardSecret2 | None = None
     commitment: str | None = None
     opponent_commitment: str | None = None
     last_action_status: str = ""
     proof_timings: list[ProofTiming] = field(default_factory=list)
+    initial_proof: str | None = None
 
     def __post_init__(self) -> None:
         setup_battleship_circuit()
-        self.secret = make_secret(
-            self.player.board.committed_coordinate(), salt=randbelow(2**32)
+        shipx_coords = [
+            ROWS.index(coord.row) + 1
+            for ship in self.player.ships
+            for coord in ship.hits
+        ]
+        shipy_coords = [
+            coord.column
+            for ship in self.player.ships
+            for coord in ship.hits
+        ]
+        salt = randbelow(2**32)
+        self.secret = make_board_secret_2(
+            ships_x=shipx_coords, ships_y=shipy_coords, salt=salt
         )
-        self.commitment = commitment_for(self.secret)
+        self.initial_proof = prove_board2(self.secret)
+        self.commitment = json.loads(self.initial_proof)["public"]
 
     def check_lost(self) -> bool:
         return self.player.board.check_all_ships_sunk()
@@ -87,7 +101,7 @@ class Game:
         )
         verify_started = perf_counter()
         try:
-            result = verify_hit_response(
+            result = verify_hit_response2(
                 raw_response,
                 guess=coordinate,
                 expected_commitment=self._opponent_commitment(),
@@ -168,7 +182,7 @@ class Game:
         )
         ui.draw(self.player.board, status="Generating proof...")
         generate_started = perf_counter()
-        response = make_hit_response(
+        response = make_hit_response2(
             coordinate,
             hit=hit,
             result=result,
@@ -336,7 +350,13 @@ class Game:
             return f"{status} {proof_status}."
         return status
 
-    def _secret(self) -> BattleshipSecret:
+    def exchange_initial_proofs(self) -> None:
+        send(self.player.conn, self.initial_proof or "")
+        msg = recv()
+        self.opponent_commitment = json.loads(msg)["public"][0]
+        verify_board2(msg)
+
+    def _secret(self) -> BoardSecret2:
         if self.secret is None:
             raise RuntimeError("Battleship ZK secret is not initialized")
         return self.secret

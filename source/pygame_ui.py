@@ -287,6 +287,11 @@ class PygameUI:
 
         self._draw_proof_inspector()
 
+        if self.cheat_mode:
+            frame = self.screen.copy()
+            self.screen.fill((255, 255, 255))
+            self.screen.blit(frame, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+
         display.flip()
         self.clock.tick(self.FPS)
 

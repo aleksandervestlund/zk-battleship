@@ -1,0 +1,428 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{packages}
+
+% ----------- Page setup ------------
+\newcommand*{\hmmax}{0}
+\newcommand*{\bmmax}{0}
+\RequirePackage[american]{babel}
+\RequirePackage[
+  babel,
+  factor=1100,
+  shrink=10,
+  step=1,
+  stretch=10,
+  tracking=true,
+]{microtype}
+\RequirePackage{anyfontsize}
+
+\RequirePackage{iftex}
+\ifPDFTeX
+  \RequirePackage[utf8]{inputenc}
+  \RequirePackage[T1]{fontenc}
+  \RequirePackage{morewrites}
+  \RequirePackage{lmodern}
+  \pdfgentounicode=1
+  \microtypesetup{
+    expansion=true,
+    kerning=true,
+    protrusion=true,
+  }
+\else\ifLuaTeX
+  \RequirePackage{fontspec}
+  \microtypesetup{
+    expansion=true,
+    kerning=false,
+    protrusion=false,
+  }
+\else\ifXeTeX
+  \RequirePackage{fontspec}
+  \RequirePackage{morewrites}
+  \microtypesetup{
+    expansion=false,
+    kerning=false,
+    protrusion=false,
+  }
+\fi\fi\fi
+
+\clubpenalty=10000
+\widowpenalty=10000
+\sloppy
+
+\RequirePackage{silence}
+\WarningFilter{latex}{Command \showhyphens has changed.}
+\WarningFilter{latex}{Command `\theH} % https://github.com/arnomi/cryptocode/issues/28
+
+\newcommand*{\footnotenonumber}[1]{{\renewcommand*{\thempfn}{}\footnotetext{#1}}}
+
+% ----------- Mathematics -----------
+\RequirePackage{latexsym}
+\RequirePackage{amsfonts}
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{amsthm}
+\RequirePackage{bm}
+\RequirePackage{calc}
+\RequirePackage[makeroom]{cancel}
+\RequirePackage{commath}
+\RequirePackage[
+  ISO,
+  mleftright,
+  spaced=1,
+]{diffcoeff}
+\RequirePackage{faktor}
+\RequirePackage{mathrsfs}
+\RequirePackage{mathtools}
+\RequirePackage{nicefrac}
+\RequirePackage{thmtools}
+
+\newtheorem{aside}{aside}
+\newtheorem{assumption}{Assumption}
+\newtheorem{claim}{claim}
+\newtheorem{exercise}{exercise}
+\newtheorem{observation}{observation}
+\newtheorem{principle}{principle}
+\newtheorem{property}{property}
+\newtheorem{proposition}{proposition}
+\newtheorem{remark}{remark}
+
+\newcommand*{\proofideatext}  {Proof Idea}
+\newcommand*{\proofsketchtext}{Proof Sketch}
+\newenvironment*{proofidea}  {\begin{proof}[\proofideatext]\pushQED{}}{\end{proof}}
+\newenvironment*{proofsketch}{\begin{proof}[\proofsketchtext]}        {\end{proof}}
+
+\interdisplaylinepenalty=2500
+\allowdisplaybreaks
+
+\newlength{\savearraycolsep}
+\setlength{\savearraycolsep}{\arraycolsep}
+
+\newcommand*{\narrowarray}[1]{\setlength{\arraycolsep}{#1\savearraycolsep}}
+\newcommand*{\normalarray}   {\narrowarray{1}}
+
+\DeclarePairedDelimiter{\pdelim}{(}      {)}
+\DeclarePairedDelimiter{\bdelim}{[}      {]}
+\DeclarePairedDelimiter{\cdelim}{\{}     {\}}
+\DeclarePairedDelimiter{\rdelim}{\lfloor}{\rceil}
+
+\renewcommand*{\del}  [1]{\pdelim*{#1}}
+\renewcommand*{\sbr}  [1]{\bdelim*{#1}}
+\renewcommand*{\cbr}  [1]{\cdelim*{#1}}
+\renewcommand*{\intoo}[1]{\del{#1}}
+\renewcommand*{\intcc}[1]{\sbr{#1}}
+\newcommand*{\round}  [1]{\rdelim*{#1}}
+\newcommand*{\dell}   [1]{\!\del{#1}}
+\newcommand*{\dellr}  [1]{\dell{#1}\!}
+\newcommand*{\delr}   [1]{\del{#1}\!}
+
+\makeatletter
+\newif\if@firstcol
+\def\env@vectorlogic{%
+  \setlength{\arraycolsep}{0pt}
+  \setlength{\extrarowheight}{-1.5pt}
+  \global\@firstcoltrue
+  \let\org@arraycr\@arraycr
+  \def\@arraycr{\global\@firstcoltrue\org@arraycr}%
+  \array{*{20}{>{\if@firstcol\global\@firstcolfalse\else,\,\fi}c}}%
+}
+\newenvironment{comma@array}{\env@vectorlogic}{\endmatrix}
+\makeatother
+
+\RequirePackage{environ}
+\NewEnviron{pvector}{\del{\begin{comma@array}\BODY\end{comma@array}}}
+
+\newcommand*{\defeq} {\overset{\mathrm{def}}{=}}
+\newcommand*{\meq}   {\overset{\mathrm{m}}{=}}
+\newcommand*{\qmeq}  {\overset{?}{=}}
+\newcommand*{\hateq} {\mathrel{\hat{=}}}
+\newcommand*{\whateq}{\mathrel{\widehat{=}}}
+
+\DeclareMathOperator {\Adj}    {Adj}
+\DeclareMathOperator {\Cov}    {Cov}
+\DeclareMathOperator {\law}    {Law}
+\DeclareMathOperator {\lcm}    {lcm}
+\DeclareMathOperator {\logtwo} {log_2}
+\DeclareMathOperator {\logten} {log_{10}}
+\DeclareMathOperator {\ord}    {ord}
+\DeclareMathOperator {\sinc}   {sinc}
+\DeclareMathOperator {\supp}   {supp}
+\DeclareMathOperator {\tr}     {tr}
+\DeclareMathOperator {\Var}    {Var}
+\DeclareMathOperator*{\softmax}{softmax}
+
+\newcommand*{\sq}       {^2}
+\newcommand*{\inv}      {^{-1}}
+\newcommand*{\transpose}{^\top}
+\newcommand*{\sigmasq}  {\sigma\sq}
+
+\newcommand*{\func}[3]{#1\colon #2 \to #3}
+
+\newcommand*{\perm}    [2]{{}^{#1}P_{#2}}
+\newcommand*{\comb}    [2]{{}^{#1}C_{#2}}
+\renewcommand*{\choose}[2]{\dbinom{#1}{#2}}
+
+\newcommand*{\defn}       [1]{\structure{\textbf{#1}}}
+
+\newcommand*{\mat} [1]{\mathbf{#1}}
+\newcommand*{\vect}[1]{\bm{#1}}
+
+\newcommand*{\cif}    [1]{\text{if $#1$}}
+\newcommand*{\cotherwise}{\text{otherwise}}
+
+\newcommand*{\xgets}[2][]{
+  \mathrel{
+    \tikz[
+      baseline=-0.426ex,
+      inner sep=0pt,
+      outer sep=0pt,
+    ]{
+      \ifthenelse{\equal{#2}{}}{}{\node at (0.05, 0.15) {\tiny #2};}
+      \node at (0, 0) {$\gets$};
+      \ifthenelse{\equal{#1}{}}{}{\node at (0.05, -0.1) {\tiny #1};}
+    }
+  }
+}
+\newcommand*{\rgets}{\xgets{R}}
+\newcommand*{\sgets}{\xgets{\$}}
+
+\RequirePackage{centernot}
+\newcommand*{\ndashv}    {\centernot\dashv}
+\newcommand*{\nmodels}   {\centernot\models}
+\newcommand*{\nperp}     {\centernot\perp}
+\newcommand*{\npropto}   {\centernot\propto}
+\newcommand*{\nsubsetneq}{\centernot\subsetneq}
+\newcommand*{\nsupsetneq}{\centernot\supsetneq}
+
+\providecommand*{\napprox}{\centernot\approx}
+\providecommand*{\nequiv} {\centernot\equiv}
+\providecommand*{\nsubset}{\centernot\subset}
+\providecommand*{\nsupset}{\centernot\supset}
+
+\renewcommand*{\ge} {\geqslant}
+\renewcommand*{\geq}{\geqslant}
+\renewcommand*{\le} {\leqslant}
+\renewcommand*{\leq}{\leqslant}
+
+\RequirePackage{newunicodechar}
+\newunicodechar{≈}{\approx}
+\newunicodechar{∆}{\Delta}
+\newunicodechar{≥}{\geq}
+\newunicodechar{∞}{\infty}
+\newunicodechar{∫}{\int}
+\newunicodechar{∧}{\land}
+\newunicodechar{≤}{\leq}
+\newunicodechar{∨}{\lor}
+\newunicodechar{◊}{\lozenge}
+\newunicodechar{≠}{\neq}
+\newunicodechar{Ω}{\Omega}
+\newunicodechar{∂}{\partial}
+\newunicodechar{π}{\pi}
+\newunicodechar{∏}{\Pi}
+\newunicodechar{∑}{\Sigma}
+\newunicodechar{√}{\surd}
+\newunicodechar{˚}{\textdegree}
+
+\RequirePackage{aliascnt}
+\newaliascnt{ineq}{equation}
+\newaliascnt{inva}{equation}
+\aliascntresetthe{ineq}
+\aliascntresetthe{inva}
+
+\makeatletter
+\newcommand*{\inequality}{$$\refstepcounter{ineq}}
+\newcommand*{\invariant} {$$\refstepcounter{inva}}
+\def\endinequality{\eqno\hbox{\@eqnnum}$$\@ignoretrue}
+\def\endinvariant {\eqno\hbox{\@eqnnum}$$\@ignoretrue}
+\makeatother
+
+\DeclareSymbolFont{operatorsT1}{T1}{cmr}{m}{n} % Slots: https://en.wikipedia.org/wiki/Cork_encoding
+\DeclareMathSymbol{\mlq}{\mathord}{operatorsT1}{16}
+\DeclareMathSymbol{\mrq}{\mathord}{operatorsT1}{17}
+
+% ------- Figures and tables --------
+\RequirePackage{graphicx}
+\RequirePackage{tabularray}
+\RequirePackage[
+  figureposition=bottom,
+  font=onehalfspacing,
+  labelfont=bf,
+  tableposition=top,
+]{caption}
+\RequirePackage[list=true]{subcaption}
+
+\RequirePackage{tikz}
+\usetikzlibrary{
+  calc,
+  fit,
+  overlay-beamer-styles,
+}
+
+\RequirePackage[edges]{forest}
+
+\RequirePackage{pgfplots}
+\pgfplotsset{
+  compat=newest,
+  cycle list name=color list,
+  every axis plot/.append style={
+    black,
+    line join=round,
+    thick,
+  },
+  hide obscured x ticks=false,
+  major tick length=5pt,
+  width=\linewidth,
+  samples=101,
+  scale=1.0,
+}
+
+\setkeys{Gin}{
+  keepaspectratio,
+  totalheight=\textheight,
+  width=\linewidth,
+}
+
+\RequirePackage{xspace}
+\RequirePackage[export]{adjustbox}
+\RequirePackage{float}
+\RequirePackage{longtable}
+\RequirePackage{lscape}
+\RequirePackage{multirow}
+\RequirePackage{flafter}
+\RequirePackage[section]{placeins}
+\RequirePackage{makecell}
+\renewcommand*{\theadfont}{\bfseries}
+
+\newcommand*{\specialcell}[2][c]{\begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+\makeatletter
+\newcommand*{\input@path}{{Sections/}}
+\makeatother
+
+\graphicspath{{Images/}}
+\newcommand*{\mitlogo} {Images/MIT_logo.png}
+
+% -------------- Code ---------------
+\RequirePackage{listings}
+\RequirePackage{dirtree}
+
+\RequirePackage{minted}
+\setminted{
+  autogobble=true,
+  baselinestretch=1,
+  breaklines=true,
+  mathescape,
+  style=default,
+}
+
+\RequirePackage[most]{tcolorbox}
+\tcbset{
+  bottom=3pt,
+  boxsep=0pt,
+  enhanced,
+  left=3pt,
+  hyphenationfix,
+  oversize,
+  right=3pt,
+  top=3pt,
+}
+\tcbuselibrary{minted}
+
+\BeforeBeginEnvironment{minted}{\begin{tcolorbox}[boxrule=1pt]}
+\AfterEndEnvironment   {minted}{\end{tcolorbox}}
+
+\let\oldinputminted\inputminted
+\RenewDocumentCommand{\inputminted}{O{} m m}{
+  \begin{tcolorbox}[boxrule=1pt]
+    \oldinputminted[#1]{#2}{#3}
+  \end{tcolorbox}
+}
+
+% ----------- Algorithms ------------
+% Alternatively, check out clrscode4e: https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/11599/clrscode4e.pdf
+\RequirePackage{algorithm}
+\RequirePackage{algpseudocode}
+
+% ----------- Referencing -----------
+\RequirePackage{bookmark}
+
+\let\eval\relax
+\RequirePackage[
+  advantage,
+  adversary,
+  asymptotics,
+  complexity,
+  events,
+  ff,
+  keys,
+  lambda,
+  landau,
+  logic,
+  mm,
+  notions,
+  operators,
+  oracles,
+  primitives,
+  probability,
+  sets,
+]{cryptocode}
+\let\AC\relax % Conflicts with glossaries-extra
+
+\newcommand*{\dtime} {\pccomplexitystyle{DTIME}}
+\newcommand*{\ip}    {\pccomplexitystyle{IP}}
+\newcommand*{\pspace}{\pccomplexitystyle{PSPACE}}
+
+\newcommand*{\hit}   {\key[hit]}
+\newcommand*{\miss}  {\key[miss]}
+
+\renewcommand*{\expect}[1]{\operatorname{\expectationname}\del{#1}}
+\renewcommand*{\prob}  [1]{\operatorname{\probname}\del{#1}}
+\renewcommand*{\smallO}[1]{o\del{#1}}
+
+\renewcommand*{\kgen}    {\pcalgostyle{Key}\gen}
+\renewcommand*{\verify}  {\pcalgostyle{Ver}}
+
+\PassOptionsToPackage{lang-warn=false}{datatool-base}
+\RequirePackage[
+  acronyms,
+  nomain,
+  shortcuts,
+  translate=babel,
+]{glossaries-extra}
+\loadglsentries{glossary}
+\newcommand*{\cGlsshort}  [1]{\texorpdfstring{\Glsxtrshort*{#1}}  {\glsentryshort{#1}}}
+\newcommand*{\cglsshort}  [1]{\texorpdfstring{\glsxtrshort*{#1}}  {\glsentryshort{#1}}}
+\newcommand*{\cGlsshortpl}[1]{\texorpdfstring{\Glsxtrshortpl*{#1}}{\glsentryshort{#1}}}
+\newcommand*{\cglsshortpl}[1]{\texorpdfstring{\glsxtrshortpl*{#1}}{\glsentryshort{#1}}}
+\newcommand*{\cGlslong}   [1]{\texorpdfstring{\Glsxtrlong*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cglslong}   [1]{\texorpdfstring{\glsxtrlong*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cGlslongpl} [1]{\texorpdfstring{\Glsxtrlongpl*{#1}} {\glsentryshort{#1}}}
+\newcommand*{\cglslongpl} [1]{\texorpdfstring{\glsxtrlongpl*{#1}} {\glsentryshort{#1}}}
+\newcommand*{\cGlsfull}   [1]{\texorpdfstring{\Glsxtrfull*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cglsfull}   [1]{\texorpdfstring{\glsxtrfull*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cGlsfullpl} [1]{\texorpdfstring{\Glsxtrfullpl*{#1}} {\glsentryshort{#1}}}
+\newcommand*{\cglsfullpl} [1]{\texorpdfstring{\glsxtrfullpl*{#1}} {\glsentryshort{#1}}}
+
+% ------------- General -------------
+\RequirePackage[
+  shortcuts,
+  wordspacearound,
+]{extdash}
+\RequirePackage[
+  exponent-product=\cdot,
+  per-mode=symbol,
+]{siunitx}
+\RequirePackage[
+  level,
+  nodayofweek,
+]{datetime}
+\RequirePackage{array}
+\RequirePackage{comment}
+\RequirePackage{csquotes} % Must load after minted
+\RequirePackage{lipsum}
+\RequirePackage{pdfpages}
+
+\RequirePackage{booktabs}
+\UseTblrLibrary{booktabs}
+
+\RequirePackage{xurl}
+
+\endinput

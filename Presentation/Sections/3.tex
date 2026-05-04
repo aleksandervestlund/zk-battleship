@@ -1,0 +1,20 @@
+\section{Overview of \cglslongpl{zkp}}
+
+\begin{frame}{\Glsxtrlongpl{zkp}}
+    \begin{description}
+        \item[Completeness] If a statement is $\true$, an honest prover can convince an honest verifier.
+        \item[Soundness] If a statement is $\false$, a cheating prover cannot convince a verifier.
+        \item[Zero\-/Knowledge] The verifier learns nothing except the validity of the statement.
+    \end{description}
+
+    \uncover<+->{\defn{Examples from class:} $\pcalgostyle{3Col}$ and $ \pcalgostyle{Sumcheck}$.}
+\end{frame}
+
+\begin{frame}{$\pcalgostyle{Groth16}$}
+    \begin{itemize}
+        \item An improvement upon the zk\-/\glsxtrfull{snark} $\pcalgostyle{Pinocchio}$ discussed in class.
+        \item \defn{Small proofs:} Constant size regardless of circuit complexity.
+        \item Only $3$ pairings required to verify any proof.
+        \item Therefore, both fast proving and verification times.
+    \end{itemize}
+\end{frame}

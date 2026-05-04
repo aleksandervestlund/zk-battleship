@@ -1,0 +1,21 @@
+\section{Motivation}
+
+\begin{frame}{The Trust Gap in Digital Games}
+    \begin{itemize}
+        \item Traditional Battleship requires a \defn{hidden state} where players must keep ship locations secret while proving they are not cheating.
+        \item Games rely on a \defn{central server} to verify board validity and $\hit$s.
+        \item If the server is compromised or biased, the game's integrity is lost.
+        \item In a \glsxtrfull{p2p} environment, how do you prove a $\miss$ without revealing where your ships actually are?
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Why \glsxtrlongpl{zkp}?}
+    \begin{block}{The Goal}
+        Prove the validity of every move without revealing the underlying board configuration.
+    \end{block}
+    \begin{description}
+        \item[Integrity] Ensure the opponent did not move their ships mid-game, and $\hit$s are reported correctly.
+        \item[Privacy] Keep (unreported) ship coordinates $\del{x, y}$ private, even after the game ends.
+        \item[Verifiability] Anyone can verify the proof $\pi$ for a $\hit$ or $\miss$.
+    \end{description}
+\end{frame}

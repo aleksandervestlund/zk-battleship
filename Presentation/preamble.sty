@@ -1,0 +1,62 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{preamble}
+
+\usetheme{Berlin}
+
+\usecolortheme{mit}
+\usefonttheme{serif}
+
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{enumerate item}{\textbf{(\arabic{enumi})}}
+\beamertemplatenavigationsymbolsempty
+
+\pgfdeclareimage[height=0.5cm]{mit-logo}{\mitlogo}
+\logo{\pgfuseimage{mit-logo}\hspace*{0.3cm}}
+\beamerdefaultoverlayspecification{<+->}
+
+\setlength{\unitlength}{\textwidth}
+\newcounter{realtotalframenumber}{\value{totalframenumber}}
+
+\glsdisablehyper
+\setlength{\parskip}{\medskipamount}
+
+\AtBeginSection[]{
+  \begin{frame}{Outline}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\makeatletter
+\def\beamer@insttitle#1{\textsuperscript{\@fnsymbol{#1}}}
+\def\beamer@instinst#1{\textsuperscript{\@fnsymbol{#1}}\ignorespaces}
+\makeatother
+
+\newcommand*{\insts}[1]{\texorpdfstring{%
+  \def\notfirst{0}%
+  \renewcommand*{\do}[1]{%
+    \if0\notfirst\else
+      \textsuperscript{,}%
+    \fi
+    \inst{##1}%
+    \def\notfirst{1}%
+  }%
+  \docsvlist{#1}%
+}{}}
+
+\title{ZK Battleship}
+\subtitle{6.5610 Project}
+\author{%
+  Timothy~Mathew\inst{1}%
+  \and Varun~Sangtani\insts{1,2}%
+  \and Zachary~S.~Siegel\inst{1}%
+  \and Aleksander~T.~Vestlund\insts{1,3}%
+}
+\institute{%
+  \inst{1} EECS, MIT%
+  \and\inst{2} EEE, ICL%
+  \and\inst{3} IIK, NTNU%
+}
+\date{May 4, 2026}
+
+\endinput

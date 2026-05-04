@@ -1,0 +1,142 @@
+\section{Merkle Trees}
+
+\begin{frame}{Na\"\i ve Commitment}
+    \begin{itemize}
+        \item Let the hidden board state be
+        \begin{equation*}
+            x = \begin{pvector}
+                x_1 & \dots & x_N
+            \end{pvector},
+        \end{equation*}
+        where each $x_j \in \bin$ indicates whether square $j$ contains a ship.
+    
+        \item At setup, the defender publishes a commitment to the whole board:
+        \begin{equation*}
+            C = \hash\del{x_1, \dots, x_N}.
+        \end{equation*}
+    
+        \item For a shot at square $i$, the defender reports
+        \begin{equation*}
+            y \in \set{\hit, \miss}.
+        \end{equation*}
+    
+        \item The defender proves
+        \begin{align*}
+            &\exists x_1, \dots, x_N \\
+            \text{s.t.} \quad
+            & C = \hash\del{x_1, \dots, x_N}, \\
+            & y = f\del{x_i}.
+        \end{align*}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Na\"\i ve Commitment: Cost}
+    \begin{itemize}
+        \item \defn{Problem:} Even though we only need to verify the local value $x_i$, the circuit must re-hash the entire board.
+    
+        \item $\pcalgostyle{Groth16}$ proving cost depends on the number of circuit constraints.
+    
+        \item Re-hashing the full board creates constraints that scale with the size of the game state:
+        \begin{equation*}
+            \bigO{N}.
+        \end{equation*}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Merkle Tree Commitment}
+    \small
+    \begin{itemize}
+        \item \defn{Goal:} Commit to many values using one root hash.
+    
+        \item In our case, the values are the board squares $x_1, \dots, x_N$.
+    
+        \item The defender publishes the Merkle root
+        \begin{equation*}
+            R = \pcalgostyle{MerkleRoot}\del{\ell_1, \dots, \ell_N},
+        \end{equation*}
+        
+        where each leaf
+        \begin{equation*}
+            \ell_j = \hash_{\pcalgostyle{leaf}}\del{j, x_j, r_j}
+        \end{equation*}
+        
+        is a commitment to square $j$.
+
+        \item Here:
+        \begin{align*}
+            x_j &= \text{value of square } j, \\
+            r_j &= \text{private randomness}.
+        \end{align*}
+    
+        \item $R$ commits to the entire board, but a square can be \\
+        verified using only its \defn{Merkle path}.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Merkle Tree}
+    \begin{figure}
+        \small
+        \centering
+        \begin{forest}
+            /tikz/hl1/.style={
+                draw=Blue,
+                line width=1.5pt,
+            },
+            /tikz/hl2/.style={
+                draw=Red,
+                line width=1.5pt,
+            },
+            for tree={
+                draw,
+                grow=south,
+                inner sep=1pt,
+                minimum height=4.25ex,
+                minimum size=4.25ex,
+                rounded corners,
+                s sep=7mm,
+                text centered,
+            },
+            where n children=0{
+                fill=LimeGreen!20,
+            }{
+                fill=Violet!20,
+            }
+            [$R$, alt={<8>{hl1}{}}
+                [$h_{1,4}$, alt={<6-7>{hl1}{}}, visible on=<-7>, edge={visible on=<-7>}
+                    [$h_{1,2}$, alt={<4-5>{hl1}{}}, visible on=<-5>, edge={visible on=<-5>}
+                        [$\ell_1$, alt={<2-3>{hl1}{}}, visible on=<-3>, edge={visible on=<-3>}]
+                        [$\ell_2$, alt={<3>{hl2}{}}, visible on=<-3>, edge={visible on=<-3>}]
+                    ]
+                    [$h_{3,4}$, alt={<5>{hl2}{}}, visible on=<-5>, edge={visible on=<-5>}
+                        [$\ell_3$, visible on=<-5>, edge={visible on=<-5>}]
+                        [$\ell_4$, visible on=<-5>, edge={visible on=<-5>}]
+                    ]
+                ]
+                [$h_{5,8}$, alt={<7>{hl2}{}}, visible on=<-7>, edge={visible on=<-7>}
+                    [$h_{5,6}$, visible on=<-7>, edge={visible on=<-7>}
+                        [$\ell_5$, visible on=<-7>, edge={visible on=<-7>}]
+                        [$\ell_6$, visible on=<-7>, edge={visible on=<-7>}]
+                    ]
+                    [$h_{7,8}$, visible on=<-7>, edge={visible on=<-7>}
+                        [$\ell_7$, visible on=<-7>, edge={visible on=<-7>}]
+                        [$\ell_8$, visible on=<-7>, edge={visible on=<-7>}]
+                    ]
+                ]
+            ]
+        \end{forest}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Why This Helps}
+    \begin{table}
+        \begin{tblr}{colspec={lcc}}
+            \toprule
+                                   & \thead{Na\"\i ve}  & \thead{Merkle}          \\
+            \midrule
+            \thead{Private inputs} & $x_1, \dots, x_N$  & $x_i, \; r_i, \; \Pi_i$ \\
+            \thead{Commitment}     & $C$                & $R$                     \\
+            \thead{Constraints}    & $\bigO{N}$         & $\bigO{\log N}$         \\
+            \bottomrule
+        \end{tblr}
+    \end{table}
+\end{frame}

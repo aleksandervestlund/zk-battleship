@@ -6,7 +6,7 @@ indices = []
 times = []
 
 # Read data from the external file
-file_path = 'proving_times.txt'
+file_path = 'proving_times2.txt'
 
 try:
     with open(file_path, 'r') as file:
@@ -39,7 +39,7 @@ plt.axhline(y=overall_mean, color='r', linestyle='--', label=f'Overall Average (
 
 # 4. Format the chart labels and title
 plt.title('Groth16 Proving Time per Circuit', fontsize=16)
-plt.xlabel('Circuit Index', fontsize=12)
+plt.xlabel('Number of Ship Coordinates', fontsize=12)
 plt.ylabel('Proving Time (Seconds)', fontsize=12)
 plt.grid(True, linestyle='--', alpha=0.6)
 plt.legend()

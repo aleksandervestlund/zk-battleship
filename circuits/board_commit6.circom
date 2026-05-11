@@ -47,7 +47,7 @@ template ValidShip(L) {
 }
 
 template BoardSetup() {
-    var N = 2; 
+    var N = 6; 
 
     signal input privShipX[N];        
     signal input privShipY[N];        
@@ -87,14 +87,21 @@ template BoardSetup() {
         }
     }
 
-    component ship1 = ValidShip(2);
+    component ship1 = ValidShip(3);
 
-    for (var i = 0; i < 2; i++) {
+    for (var i = 0; i < 3; i++) {
         ship1.X[i] <== privShipX[i];
         ship1.Y[i] <== privShipY[i];
     }
 
-    component hasher = Poseidon(5);
+    component ship2 = ValidShip(3);
+
+    for (var i = 0; i < 3; i++) {
+        ship2.X[i] <== privShipX[i + 3];
+        ship2.Y[i] <== privShipY[i + 3];
+    }
+
+    component hasher = Poseidon(13);
     
     for (var i = 0; i < N; i++) {
         hasher.inputs[i] <== privShipX[i];

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-
-import argparse
+from argparse import ArgumentParser
 
 VALID_SHIP_TEMPLATE = r"""
 template ValidShip(L) {
@@ -49,17 +48,19 @@ template ValidShip(L) {
 }
 """
 
-def generate_circuit(ship_lengths):
-    num_ships = len(ship_lengths)
+
+def generate_circuit(ship_lengths: list[int]) -> str:
     total_coords = sum(ship_lengths)
 
     # Merkle tree parameters
     tree_leaves = total_coords + 1
     tree_size = 1
     tree_height = 0
+
     while tree_size < tree_leaves:
         tree_size *= 2
         tree_height += 1
+
     num_hashers = tree_size - 1
 
     # Overlap pairs
@@ -94,7 +95,9 @@ def generate_circuit(ship_lengths):
         lines.append(f"    lessY[{i}].in[0] <== privShipY[{i}];")
         lines.append(f"    lessY[{i}].in[1] <== 10;")
         lines.append(f"    lessY[{i}].out === 1;\n")
-        lines.append(f"    leaves[{i}] <== privShipX[{i}] * 10 + privShipY[{i}] + 1;\n")
+        lines.append(
+            f"    leaves[{i}] <== privShipX[{i}] * 10 + privShipY[{i}] + 1;\n"
+        )
 
     # Salt leaf
     lines.append(f"    leaves[{total_coords}] <== privSalt;\n")
@@ -111,8 +114,12 @@ def generate_circuit(ship_lengths):
     lines.append("    var pairIdx = 0;")
     lines.append("    for (var i = 0; i < {total_coords}; i++) {")
     lines.append("        for (var j = i+1; j < {total_coords}; j++) {")
-    lines.append("            eq[pairIdx].in[0] <== privShipX[i] * 10 + privShipY[i];")
-    lines.append("            eq[pairIdx].in[1] <== privShipX[j] * 10 + privShipY[j];")
+    lines.append(
+        "            eq[pairIdx].in[0] <== privShipX[i] * 10 + privShipY[i];"
+    )
+    lines.append(
+        "            eq[pairIdx].in[1] <== privShipX[j] * 10 + privShipY[j];"
+    )
     lines.append("            eq[pairIdx].out === 0;")
     lines.append("            pairIdx++;")
     lines.append("        }")
@@ -120,32 +127,45 @@ def generate_circuit(ship_lengths):
 
     # Ship contiguity checks
     coord_offset = 0
+
     for s, length in enumerate(ship_lengths):
         lines.append(f"    component ship{s} = ValidShip({length});")
+
         for k in range(length):
             idx = coord_offset + k
             lines.append(f"    ship{s}.X[{k}] <== privShipX[{idx}];")
             lines.append(f"    ship{s}.Y[{k}] <== privShipY[{idx}];")
+
         lines.append("")
         coord_offset += length
 
     # Merkle tree - fixed indexing
     lines.append(f"    signal nodes[{tree_height+1}][{tree_size}];")
+
     for i in range(tree_size):
         lines.append(f"    nodes[0][{i}] <== leaves[{i}];")
+
     lines.append("")
     lines.append(f"    component hasher[{num_hashers}];")
-
     hasher_idx = 0
+
     for level in range(tree_height):
-        num_pairs_at_level = tree_size // (2 << level)   # number of node pairs at this level
+        # Number of node pairs at this level
+        num_pairs_at_level = tree_size // (2 << level)
+
         for i in range(num_pairs_at_level):
             left_idx = 2 * i
             right_idx = 2 * i + 1
             lines.append(f"    hasher[{hasher_idx}] = Poseidon(2);")
-            lines.append(f"    hasher[{hasher_idx}].inputs[0] <== nodes[{level}][{left_idx}];")
-            lines.append(f"    hasher[{hasher_idx}].inputs[1] <== nodes[{level}][{right_idx}];")
-            lines.append(f"    nodes[{level+1}][{i}] <== hasher[{hasher_idx}].out;")
+            lines.append(
+                f"    hasher[{hasher_idx}].inputs[0] <== nodes[{level}][{left_idx}];"
+            )
+            lines.append(
+                f"    hasher[{hasher_idx}].inputs[1] <== nodes[{level}][{right_idx}];"
+            )
+            lines.append(
+                f"    nodes[{level+1}][{i}] <== hasher[{hasher_idx}].out;"
+            )
             lines.append("")
             hasher_idx += 1
 
@@ -159,23 +179,34 @@ def generate_circuit(ship_lengths):
     code = code.replace("{tree_size}", str(tree_size))
     return code
 
-def run(ship_lengths, idx):
+
+def run(ship_lengths: list[int], idx: int) -> None:
     circom_code = generate_circuit(ship_lengths)
-    with open(f"autogen_circuit{idx}.circom", "w") as f:
+
+    with open(f"autogen_circuit{idx}.circom", "w", encoding="utf-8") as f:
         f.write(circom_code)
+
     print(f"Generated autogen_circuit{idx}.circom")
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ship-lengths", nargs="+", type=int, required=True,
-                        help="Ship lengths, e.g. --ship-lengths 2 2 3")
+
+def main() -> None:
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--ship-lengths",
+        nargs="+",
+        type=int,
+        required=True,
+        help="Ship lengths, e.g. --ship-lengths 2 2 3",
+    )
     parser.add_argument("--output", type=str, default="compact_board.circom")
     args = parser.parse_args()
-
     circom_code = generate_circuit(args.ship_lengths)
-    with open(args.output, "w") as f:
+
+    with open(args.output, "w", encoding="utf-8") as f:
         f.write(circom_code)
+
     print(f"Generated {args.output}")
+
 
 if __name__ == "__main__":
     main()

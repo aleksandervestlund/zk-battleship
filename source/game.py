@@ -259,10 +259,12 @@ class Game:
         shipx_coords = [
             ROWS.index(coord.row) + 1
             for ship in self.player.ships
-            for coord in ship.hits
+            for coord in ship._get_all_coordinates()
         ]
         shipy_coords = [
-            coord.column for ship in self.player.ships for coord in ship.hits
+            coord.column
+            for ship in self.player.ships
+            for coord in ship._get_all_coordinates()
         ]
         salt = randbelow(2**32)
         self.secret = make_board_secret_2(

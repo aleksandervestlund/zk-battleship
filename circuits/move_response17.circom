@@ -3,52 +3,39 @@ pragma circom 2.1.6;
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
 
-// N is the total number of coordinates occupied by all ships combined
 template BattleshipHit(N) {
-
-    // public inputs
     signal input pubGuessX;        
     signal input pubGuessY;        
     signal input pubCommitment;    
     signal input pubReportedHit;   // 1 (Hit) or 0 (Miss)
 
-    // private inputs (Arrays of length N)
     signal input privShipX[N];        
     signal input privShipY[N];        
     signal input privSalt;   
-
     
     component eqX[N];
     component eqY[N];
     signal hitMatch[N];
     
-    // We must use an array to accumulate the total hits.
     signal hitAccumulator[N + 1];
     hitAccumulator[0] <== 0;
 
     for (var i = 0; i < N; i++) {
-        // Check if X matches
         eqX[i] = IsEqual();
         eqX[i].in[0] <== pubGuessX;
         eqX[i].in[1] <== privShipX[i];
 
-        // Check if Y matches
         eqY[i] = IsEqual();
         eqY[i].in[0] <== pubGuessY;
         eqY[i].in[1] <== privShipY[i];
 
-        // 1 if this specific cell is a hit, 0 otherwise
         hitMatch[i] <== eqX[i].out * eqY[i].out;
         
-        // Add current match to the running total
         hitAccumulator[i + 1] <== hitAccumulator[i] + hitMatch[i];
     }
 
-    // Since a valid board has no overlapping ships, 
-    // hitAccumulator[N] will be exactly 1 (if hit) or 0 (if miss).
     pubReportedHit === hitAccumulator[N];
     
-    // generate tree commitment
     signal leaves[32];
     component lessX[17];
     component lessY[17];
@@ -246,35 +233,20 @@ template BattleshipHit(N) {
     lessY[16].out === 1;
 
     leaves[16] <== privShipX[16] * 10 + privShipY[16] + 1;
-
     leaves[17] <== privSalt;
-
     leaves[18] <== 0;
-
     leaves[19] <== 0;
-
     leaves[20] <== 0;
-
     leaves[21] <== 0;
-
     leaves[22] <== 0;
-
     leaves[23] <== 0;
-
     leaves[24] <== 0;
-
     leaves[25] <== 0;
-
     leaves[26] <== 0;
-
     leaves[27] <== 0;
-
     leaves[28] <== 0;
-
     leaves[29] <== 0;
-
     leaves[30] <== 0;
-
     leaves[31] <== 0;
 
     signal nodes[6][32];

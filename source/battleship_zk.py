@@ -13,10 +13,11 @@ from source.zk_circuit_runner import (
     verify_groth16_payload,
 )
 
+
 BATTLESHIP_CIRCUIT = Path("circuits/battleship_hit.circom")
-BATTLESHIP_CIRCUIT_2 = Path("circuits/battleship_hit2.circom")
+BATTLESHIP_CIRCUIT_2 = Path("circuits/move_response17.circom")
 BOARD_CIRCUIT = Path("circuits/board_commitment.circom")
-BOARD_CIRCUIT_2 = Path("circuits/board_commit2.circom")
+BOARD_CIRCUIT_2 = Path("circuits/board_commit17.circom")
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,7 +66,7 @@ def setup_battleship_circuit() -> None:
 def setup_battleship_circuit_2() -> None:
     """Ensure the Battleship hit circuit has proving artifacts."""
     if not manifest_path_for(BATTLESHIP_CIRCUIT_2).exists():
-        setup_groth16_circuit(BATTLESHIP_CIRCUIT_2)
+        setup_groth16_circuit(BATTLESHIP_CIRCUIT_2, power=14)
 
 
 def setup_board_circuit() -> None:
@@ -75,7 +76,7 @@ def setup_board_circuit() -> None:
 
 def setup_board2_circuit() -> None:
     if not manifest_path_for(BOARD_CIRCUIT_2).exists():
-        setup_groth16_circuit(BOARD_CIRCUIT_2)
+        setup_groth16_circuit(BOARD_CIRCUIT_2, power=14)
 
 
 def make_secret(
@@ -247,16 +248,36 @@ def board_commitment_for(secret: BoardSecret) -> str:
     return poseidon_hash(*flat)
 
 
+def poseidon_pair(a: int, b: int) -> int:
+    return int(poseidon_hash(a, b))
+
+
 def board_commitment_for2(secret: BoardSecret2) -> str:
-    flat: list[int] = []
+    leaves: list[int] = []
+    n = len(secret.ships_x)
 
-    for i in range(7):
-        flat.append(secret.ships_x[i])
-    for i in range(7):
-        flat.append(secret.ships_y[i])
+    for i in range(n):
+        leaves.append(secret.ships_x[i] * 10 + secret.ships_y[i] + 1)
 
-    flat.append(secret.salt)
-    return poseidon_hash(*flat)
+    leaves.append(secret.salt)
+
+    while len(leaves) < 32:
+        leaves.append(0)
+
+    nodes = [int(x) for x in leaves]
+    level_size = len(nodes)
+
+    while level_size > 1:
+        next_level: list[int] = []
+
+        for i in range(0, level_size, 2):
+            h = poseidon_pair(nodes[i], nodes[i + 1])
+            next_level.append(h)
+
+        nodes = next_level
+        level_size = len(nodes)
+
+    return str(nodes[0])
 
 
 def validate_ship(sx: int, sy: int, length: int, direction: int) -> bool:

@@ -46,4 +46,4 @@ template BattleshipHit(N) {
     pubReportedHit === hitAccumulator[N];
 }
 
-component main {public [pubGuessX, pubGuessY, pubCommitment, pubReportedHit]} = BattleshipHit(7);
+component main {public [pubGuessX, pubGuessY, pubCommitment, pubReportedHit]} = BattleshipHit(6);

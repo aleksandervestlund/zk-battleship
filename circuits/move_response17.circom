@@ -4,14 +4,14 @@ include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
 
 template BattleshipHit(N) {
-    signal input pubGuessX;        
-    signal input pubGuessY;        
-    signal input pubCommitment;    
-    signal input pubReportedHit;   // 1 (Hit) or 0 (Miss)
+    signal input pubGuessX;
+    signal input pubGuessY;
+    signal input pubCommitment;
+    signal input pubReportedHit; // 1 (Hit) or 0 (Miss)
 
-    signal input privShipX[N];        
-    signal input privShipY[N];        
-    signal input privSalt;   
+    signal input privShipX[N];
+    signal input privShipY[N];
+    signal input privSalt;
     
     component eqX[N];
     component eqY[N];

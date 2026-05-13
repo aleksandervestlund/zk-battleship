@@ -1,6 +1,7 @@
 \section{Merkle Trees}
 
-\begin{frame}{Na\"\i ve Commitment}
+\begin{frame}{Na{\"\i}ve Commitment}
+    \footnotesize
     \begin{itemize}
         \item Let the hidden board state be
         \begin{equation*}
@@ -17,7 +18,7 @@
     
         \item For a shot at square $i$, the defender reports
         \begin{equation*}
-            y \in \set{\hit, \miss}.
+            z \in \set{\hit, \miss}.
         \end{equation*}
     
         \item The defender proves
@@ -25,16 +26,16 @@
             &\exists x_1, \dots, x_N \\
             \text{s.t.} \quad
             & C = \hash\del{x_1, \dots, x_N}, \\
-            & y = f\del{x_i}.
+            & z = f\del{x_i}.
         \end{align*}
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Na\"\i ve Commitment: Cost}
+\begin{frame}{Na{\"\i}ve Commitment: Cost}
     \begin{itemize}
         \item \defn{Problem:} Even though we only need to verify the local value $x_i$, the circuit must re-hash the entire board.
     
-        \item $\pcalgostyle{Groth16}$ proving cost depends on the number of circuit constraints.
+        \item $\groth$ proving cost depends on the number of circuit constraints.
     
         \item Re-hashing the full board creates constraints that scale with the size of the game state:
         \begin{equation*}
@@ -44,7 +45,7 @@
 \end{frame}
 
 \begin{frame}{Merkle Tree Commitment}
-    \small
+    \footnotesize
     \begin{itemize}
         \item \defn{Goal:} Commit to many values using one root hash.
     
@@ -52,7 +53,7 @@
     
         \item The defender publishes the Merkle root
         \begin{equation*}
-            R = \pcalgostyle{MerkleRoot}\del{\ell_1, \dots, \ell_N},
+            \mroot = \pcalgostyle{MerkleRoot}\del{\ell_1, \dots, \ell_N},
         \end{equation*}
         
         where each leaf
@@ -68,7 +69,7 @@
             r_j &= \text{private randomness}.
         \end{align*}
     
-        \item $R$ commits to the entire board, but a square can be \\
+        \item $\mroot$ commits to the entire board, but a square can be \\
         verified using only its \defn{Merkle path}.
     \end{itemize}
 \end{frame}
@@ -80,20 +81,20 @@
         \begin{forest}
             /tikz/hl1/.style={
                 draw=Blue,
-                line width=1.5pt,
+                line width=0.15em,
             },
             /tikz/hl2/.style={
                 draw=Red,
-                line width=1.5pt,
+                line width=0.15em,
             },
             for tree={
                 draw,
                 grow=south,
-                inner sep=1pt,
-                minimum height=4.25ex,
-                minimum size=4.25ex,
+                inner sep=0.1em,
+                minimum height=1.8em,
+                minimum size=1.8em,
                 rounded corners,
-                s sep=7mm,
+                s sep=1.8em,
                 text centered,
             },
             where n children=0{
@@ -101,7 +102,7 @@
             }{
                 fill=Violet!20,
             }
-            [$R$, alt={<8>{hl1}{}}
+            [$\mroot$, alt={<8>{hl1}{}}
                 [$h_{1,4}$, alt={<6-7>{hl1}{}}, visible on=<-7>, edge={visible on=<-7>}
                     [$h_{1,2}$, alt={<4-5>{hl1}{}}, visible on=<-5>, edge={visible on=<-5>}
                         [$\ell_1$, alt={<2-3>{hl1}{}}, visible on=<-3>, edge={visible on=<-3>}]
@@ -131,11 +132,11 @@
     \begin{table}
         \begin{tblr}{colspec={lcc}}
             \toprule
-                                   & \thead{Na\"\i ve}  & \thead{Merkle}          \\
+                                   & \thead{Na{\"\i}ve} & \thead{Merkle tree}           \\
             \midrule
-            \thead{Private inputs} & $x_1, \dots, x_N$  & $x_i, \; r_i, \; \Pi_i$ \\
-            \thead{Commitment}     & $C$                & $R$                     \\
-            \thead{Constraints}    & $\bigO{N}$         & $\bigO{\log N}$         \\
+            \thead{Private inputs} & $x_1, \ldots, x_N$ & $x_i, \quad r_i, \quad \Pi_i$ \\
+            \thead{Commitment}     & $C$                & $\mroot$                      \\
+            \thead{Constraints}    & $\bigO{N}$         & $\bigO{\log N}$               \\
             \bottomrule
         \end{tblr}
     \end{table}

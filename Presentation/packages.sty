@@ -364,14 +364,18 @@
   probability,
   sets,
 ]{cryptocode}
-\let\AC\relax % Conflicts with glossaries-extra
+\let\AC\relax
+
+\newcommand*{\groth}   {\pcalgostyle{Groth16}}
+\newcommand*{\poseidon}{\pcalgostyle{Poseidon}}
 
 \newcommand*{\dtime} {\pccomplexitystyle{DTIME}}
 \newcommand*{\ip}    {\pccomplexitystyle{IP}}
 \newcommand*{\pspace}{\pccomplexitystyle{PSPACE}}
 
-\newcommand*{\hit}   {\key[hit]}
-\newcommand*{\miss}  {\key[miss]}
+\newcommand*{\hit}  {\key[hit]}
+\newcommand*{\miss} {\key[miss]}
+\newcommand*{\mroot}{\ensuremath{R}}
 
 \renewcommand*{\expect}[1]{\operatorname{\expectationname}\del{#1}}
 \renewcommand*{\prob}  [1]{\operatorname{\probname}\del{#1}}
@@ -388,6 +392,8 @@
   translate=babel,
 ]{glossaries-extra}
 \loadglsentries{glossary}
+\setabbreviationstyle              {long-short}
+\setabbreviationstyle[\acronymtype]{long-short}
 \newcommand*{\cGlsshort}  [1]{\texorpdfstring{\Glsxtrshort*{#1}}  {\glsentryshort{#1}}}
 \newcommand*{\cglsshort}  [1]{\texorpdfstring{\glsxtrshort*{#1}}  {\glsentryshort{#1}}}
 \newcommand*{\cGlsshortpl}[1]{\texorpdfstring{\Glsxtrshortpl*{#1}}{\glsentryshort{#1}}}

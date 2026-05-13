@@ -9,7 +9,7 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Circom $\rightarrow \pcalgostyle{Groth16}$ Pipeline}
+\begin{frame}{Circom $\rightarrow \groth$ Pipeline}
     \begin{figure}
         \centering
         \includegraphics[width=0.7\textwidth]{Images/circom_pipeline.png}
@@ -20,7 +20,7 @@
             \item Outputs a \glsxtrshort{r1cs}.
             \item Generates a \defn{witness generator}.
         \end{itemize}
-        \item \defn{SnarkJS (The Prover \& Verifier)}
+        \item \defn{snarkjs (The Prover \& Verifier)}
         \begin{itemize}
             \item Takes the \glsxtrshort{r1cs} and creates \defn{proving} and \defn{verification keys}.
             \item Applies the \defn{Groth16} protocol to the witness.
@@ -33,7 +33,7 @@
         \column{0.5\textwidth}
         \begin{itemize}
             \item \defn{Private inputs:} Ship $\del{x, y}$ coordinates and a private salt.
-            \item \defn{Public output:} A Poseidon hash (commitment).
+            \item \defn{Public output:} A $\poseidon$ hash (commitment).
             \item Circuit enforces bounds, overlaps, and valid shapes.
         \end{itemize}
         \column{0.5\textwidth}
@@ -77,7 +77,7 @@ pubCommitment <== hasher.out;
         \column{0.5\textwidth}
         \begin{itemize}
             \item \defn{Private inputs:} Ship $\del{x, y}$ coordinates and a private salt (same).
-            \item \defn{Public inputs:} Player's guess, opponent board commitment, reported result $y \in \set{\hit, \miss}$.
+            \item \defn{Public inputs:} Player's guess, opponent board commitment, reported result $z \in \set{\hit, \miss}$.
             \item The circuit enforces the unchanged opponent board state and that the reported result is accurate.
         \end{itemize}
         \column{0.5\textwidth}

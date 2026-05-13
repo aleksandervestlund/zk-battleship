@@ -1,0 +1,798 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{packages}
+
+% ----------- Page setup ------------
+\RequirePackage[
+  l2tabu,
+  orthodox,
+]{nag}
+\newcommand*{\hmmax}{0}
+\newcommand*{\bmmax}{0}
+\RequirePackage[american]{babel}
+\RequirePackage[
+  babel,
+  factor=1100,
+  shrink=10,
+  step=1,
+  stretch=10,
+  tracking=true,
+]{microtype}
+\RequirePackage[
+  left=30mm,
+  right=30mm,
+  bottom=26mm,
+  top=26mm,
+  a4paper,
+  letterpaper,
+  footskip=14mm,
+  headheight=5.1mm,
+  marginparsep=0mm,
+  marginparwidth=20mm,
+]{geometry}
+\RequirePackage[onehalfspacing]{setspace}
+\RequirePackage[
+  dvipsnames,
+  svgnames,
+  table,
+  xcdraw,
+]{xcolor}
+
+\RequirePackage{iftex}
+\ifPDFTeX
+  \RequirePackage[utf8]{inputenc}
+  \RequirePackage[T1]{fontenc}
+  \RequirePackage{morewrites}
+  \RequirePackage{lmodern}
+  \pdfgentounicode=1
+  \microtypesetup{
+    expansion=true,
+    kerning=true,
+    protrusion=true,
+  }
+\else\ifLuaTeX
+  \RequirePackage{fontspec}
+  \microtypesetup{
+    expansion=true,
+    kerning=false,
+    protrusion=false,
+  }
+\else\ifXeTeX
+  \RequirePackage{fontspec}
+  \RequirePackage{morewrites}
+  \microtypesetup{
+    expansion=false,
+    kerning=false,
+    protrusion=false,
+  }
+\fi\fi\fi
+
+\setlength{\parskip}{0.8em}
+
+\clubpenalty=10000
+\widowpenalty=10000
+\flushbottom
+\sloppy
+
+\RequirePackage[blocks]{authblk}
+\renewcommand*{\Affilfont}{\small}
+
+\RequirePackage{xpatch}
+\makeatletter
+\newcommand*{\AB@fnsymbols}[1]{%
+  \def\AB@sep{}%
+  \@for\AB@tmp:=#1\do{%
+    \AB@sep\@fnsymbol{\AB@tmp}%
+    \def\AB@sep{,}%
+  }%
+}
+\xpatchcmd{\affil} {\AB@note{#1}}{\AB@note{\@fnsymbol{#1}}}           {}{}
+\xpatchcmd{\author}{\AB@note{#1}}{\AB@note{\protect\AB@fnsymbols{#1}}}{}{}
+\makeatother
+
+% ------- Document structure --------
+\RequirePackage{silence}
+\WarningFilter{latex}{Command \showhyphens has changed}
+\WarningFilter{latex}{Command `\theH} % https://github.com/arnomi/cryptocode/issues/28
+
+\RequirePackage{etoolbox}
+\patchcmd{\abstract}{\small}{}{}{}
+\AtEndEnvironment{abstract}{\glsresetall}
+
+\newcommand*{\keywordsname}{Keywords}
+\newcommand*{\keywords} [1]{\textbf{\emph{\keywordsname}} \--- #1}
+
+\newcommand*{\frontmatter}{
+  \clearpage
+  \pagenumbering{roman}
+}
+\newcommand*{\mainmatter} {
+  \clearpage
+  \pagenumbering{arabic}
+}
+
+\RequirePackage{appendix}
+\newcommand*{\addappendix}{
+  \clearpage
+  \appendix
+  \phantomsection
+  \section*{\appendixname\markboth{\appendixname}{\appendixname}}
+  \addcontentsline{toc}{section}{\appendixname}
+}
+
+\RequirePackage{afterpage}
+\newcommand*{\blankinfo}{This page was intentionally left blank}
+\newcommand*{\blankpage}{
+  \clearpage
+  \hbox{}
+  \vfill
+  {\centering \MakeUppercase{\blankinfo}\par}
+  \vfill
+  \thispagestyle{empty}
+  \addtocounter{page}{-1}
+  \clearpage
+}
+
+\newcommand*{\footnotenonumber}[1]{{\renewcommand*{\thempfn}{}\footnotetext{#1}}}
+
+\RequirePackage[
+  obeyFinal,
+  textsize=tiny,
+]{todonotes}
+\pretocmd{\todo}{\PackageWarningNoLine{todonotes}{TODO (page \thepage)}}{}{}
+
+% ----------- Mathematics -----------
+\RequirePackage{latexsym}
+\RequirePackage{amsfonts}
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{amsthm}
+\RequirePackage{bm}
+\RequirePackage{calc}
+\RequirePackage[makeroom]{cancel}
+\RequirePackage{commath}
+\RequirePackage[
+  ISO,
+  mleftright,
+  spaced=1,
+]{diffcoeff}
+\RequirePackage{faktor}
+\RequirePackage{mathrsfs}
+\RequirePackage{mathtools}
+\RequirePackage{nicefrac}
+\RequirePackage{thmtools}
+
+\interdisplaylinepenalty=2500
+\allowdisplaybreaks
+
+\declaretheorem[numberwithin=section]{
+  example,
+  exercise,
+  problem,
+  theorem
+}
+\declaretheorem[sibling=theorem]{
+  assumption,
+  claim,
+  conjecture,
+  corollary,
+  definition,
+  fact,
+  lemma,
+  observation,
+  principle,
+  property,
+  proposition
+}
+\declaretheorem[
+  numbered=no,
+  style=remark,
+]{
+  aside,
+  remark
+}
+
+\newcommand*{\proofideatext}  {Proof Idea}
+\newcommand*{\proofsketchtext}{Proof Sketch}
+\newenvironment*{proofidea}  {\begin{proof}[\proofideatext]\pushQED{}}{\end{proof}}
+\newenvironment*{proofsketch}{\begin{proof}[\proofsketchtext]}        {\end{proof}}
+
+\newlength{\savearraycolsep}
+\setlength{\savearraycolsep}{\arraycolsep}
+\newcommand*{\narrowarray}[1]{\setlength{\arraycolsep}{#1\savearraycolsep}}
+\newcommand*{\normalarray}   {\narrowarray{1}}
+
+\DeclarePairedDelimiter{\pdelim}{(}      {)}
+\DeclarePairedDelimiter{\bdelim}{[}      {]}
+\DeclarePairedDelimiter{\cdelim}{\{}     {\}}
+\DeclarePairedDelimiter{\rdelim}{\lfloor}{\rceil}
+
+\renewcommand*{\del}  [1]{\pdelim*{#1}}
+\renewcommand*{\sbr}  [1]{\bdelim*{#1}}
+\renewcommand*{\cbr}  [1]{\cdelim*{#1}}
+\renewcommand*{\intoo}[1]{\del{#1}}
+\renewcommand*{\intcc}[1]{\sbr{#1}}
+\newcommand*{\round}  [1]{\rdelim*{#1}}
+\newcommand*{\dell}   [1]{\!\del{#1}}
+\newcommand*{\dellr}  [1]{\dell{#1}\!}
+\newcommand*{\delr}   [1]{\del{#1}\!}
+
+\makeatletter
+\newif\if@firstcol
+\def\env@vectorlogic{%
+  \setlength{\arraycolsep}{0em}
+  \setlength{\extrarowheight}{-0.2em}
+  \global\@firstcoltrue
+  \let\org@arraycr\@arraycr
+  \def\@arraycr{\global\@firstcoltrue\org@arraycr}%
+  \array{*{20}{>{\if@firstcol\global\@firstcolfalse\else,\,\fi}c}}%
+}
+\newenvironment{comma@array}{\env@vectorlogic}{\endmatrix}
+\makeatother
+
+\RequirePackage{environ}
+\NewEnviron{pvector}{\del{\begin{comma@array}\BODY\end{comma@array}}}
+
+\newcommand*{\defeq} {\overset{\mathrm{def}}{=}}
+\newcommand*{\meq}   {\overset{\mathrm{m}}{=}}
+\newcommand*{\qmeq}  {\overset{?}{=}}
+\newcommand*{\hateq} {\mathrel{\hat{=}}}
+\newcommand*{\whateq}{\mathrel{\widehat{=}}}
+
+\DeclareMathOperator {\Adj}    {Adj}
+\DeclareMathOperator {\Cov}    {Cov}
+\DeclareMathOperator {\law}    {Law}
+\DeclareMathOperator {\lcm}    {lcm}
+\DeclareMathOperator {\logtwo} {log_2}
+\DeclareMathOperator {\logten} {log_{10}}
+\DeclareMathOperator {\ord}    {ord}
+\DeclareMathOperator {\sinc}   {sinc}
+\DeclareMathOperator {\supp}   {supp}
+\DeclareMathOperator {\tr}     {tr}
+\DeclareMathOperator {\Var}    {Var}
+\DeclareMathOperator*{\softmax}{softmax}
+
+\newcommand*{\data}      {\mathcal{D}}
+\newcommand*{\loss}      {\mathcal{L}}
+\newcommand*{\hypothesis}{\mathcal{H}}
+
+\newcommand*{\compl}    {{}^\mathsf{c}\!}
+\newcommand*{\sq}       {^2}
+\newcommand*{\inv}      {^{-1}}
+\newcommand*{\transpose}{^\top}
+\newcommand*{\sigmasq}  {\sigma\sq}
+
+\newcommand*{\func}[3]{#1 : #2 \to #3}
+
+\newcommand*{\perm}    [2]{{}^{#1}P_{#2}}
+\newcommand*{\comb}    [2]{{}^{#1}C_{#2}}
+\renewcommand*{\choose}[2]{\dbinom{#1}{#2}}
+
+\newcommand*{\amortized}  [1]{\widehat{#1}}
+\newcommand*{\defn}       [1]{\textbf{\textit{#1}}}
+\newcommand*{\fouriert}   [1]{\mathcal{F}\del{#1}}
+\newcommand*{\fourierinvt}[1]{\mathcal{F}\inv\del{#1}}
+\newcommand*{\indicator}  [1]{\mathbb{I}\del{#1}}
+\newcommand*{\laplacet}   [1]{\mathscr{L}\del{#1}}
+\newcommand*{\laplaceinvt}[1]{\mathscr{L}\inv\del{#1}}
+
+\newcommand*{\mat} [1]{\mathbf{#1}}
+\newcommand*{\vect}[1]{\bm{#1}}
+
+\newcommand*{\cif}    [1]{\text{if $#1$}}
+\newcommand*{\cotherwise}{\text{otherwise}}
+
+\newcommand*{\bernoulli}       [1]{\mathrm{Bernoulli}\del{#1}}  % p
+\newcommand*{\binomial}        [2]{\mathrm{Bin}\del{#1, #2}}    % n, p
+\newcommand*{\chisq}           [1]{\chi\sq_{#1}}                % nu
+\newcommand*{\exponential}     [1]{\mathrm{Exp}\del{#1}}        % lambda
+\newcommand*{\hypergeometric}  [3]{\mathrm{h}\del{#1, #2, #3}}  % N, k, n
+\newcommand*{\gammadist}       [2]{\mathrm{Ga}\del{#1, #2}}     % alpha, beta
+\newcommand*{\gaussian}        [2]{\mathcal{N}\del{#1, #2}}     % mu, sigma^2
+\newcommand*{\geometric}       [1]{\mathrm{Geom}\del{#1}}       % p
+\newcommand*{\negativebinomial}[2]{\mathrm{NegBin}\del{#1, #2}} % k, p
+\newcommand*{\poisson}         [1]{\mathrm{Pois}\del{#1}}       % mu = lambda*t
+\newcommand*{\studentt}        [1]{t_{#1}}                      % nu
+\newcommand*{\uniform}         [2]{\mathrm{Unif}\del{#1, #2}}   % a, b
+
+\RequirePackage{ifthen}
+\newcommand*{\xgets}[2][]{
+  \mathrel{
+    \tikz[
+      baseline=-0.1873em,
+      inner sep=0em,
+      outer sep=0em,
+    ]{
+      \ifthenelse{\equal{#2}{}}{}{\node at (0.05,0.15) {\tiny #2};}
+      \node at (0, 0) {$\gets$};
+      \ifthenelse{\equal{#1}{}}{}{\node at (0.05,-0.1) {\tiny #1};}
+    }
+  }
+}
+\newcommand*{\rgets}{\xgets{R}}
+
+\RequirePackage{centernot}
+\newcommand*{\ndashv}    {\centernot\dashv}
+\newcommand*{\nmodels}   {\centernot\models}
+\newcommand*{\nperp}     {\centernot\perp}
+\newcommand*{\npropto}   {\centernot\propto}
+\newcommand*{\nsubsetneq}{\centernot\subsetneq}
+\newcommand*{\nsupsetneq}{\centernot\supsetneq}
+
+% From unicode-math when using newpx or newtx:
+\providecommand*{\napprox}{\centernot\approx}
+\providecommand*{\nequiv} {\centernot\equiv}
+\providecommand*{\nsubset}{\centernot\subset}
+\providecommand*{\nsupset}{\centernot\supset}
+
+\renewcommand*{\ge} {\geqslant}
+\renewcommand*{\geq}{\geqslant}
+\renewcommand*{\le} {\leqslant}
+\renewcommand*{\leq}{\leqslant}
+\renewcommand*{\emptyset}{\varnothing}
+
+\RequirePackage{newunicodechar}
+\newunicodechar{≈}{\approx}
+\newunicodechar{∆}{\Delta}
+\newunicodechar{≥}{\geq}
+\newunicodechar{∞}{\infty}
+\newunicodechar{∫}{\int}
+\newunicodechar{∧}{\land}
+\newunicodechar{≤}{\leq}
+\newunicodechar{∨}{\lor}
+\newunicodechar{◊}{\lozenge}
+\newunicodechar{≠}{\neq}
+\newunicodechar{Ω}{\Omega}
+\newunicodechar{∂}{\partial}
+\newunicodechar{π}{\pi}
+\newunicodechar{∏}{\Pi}
+\newunicodechar{∑}{\Sigma}
+\newunicodechar{√}{\surd}
+\newunicodechar{˚}{\textdegree}
+
+\RequirePackage{aliascnt}
+\newaliascnt{ineq}{equation}
+\newaliascnt{inva}{equation}
+\aliascntresetthe{ineq}
+\aliascntresetthe{inva}
+
+\makeatletter
+\newcommand*{\inequality}{$$\refstepcounter{ineq}}
+\newcommand*{\invariant} {$$\refstepcounter{inva}}
+\def\endinequality{\eqno\hbox{\@eqnnum}$$\@ignoretrue}
+\def\endinvariant {\eqno\hbox{\@eqnnum}$$\@ignoretrue}
+\makeatother
+
+% ------- Figures and tables --------
+\RequirePackage{graphicx}
+\RequirePackage[list=true]{subcaption}
+\RequirePackage{tabularray}
+\RequirePackage[nottoc]{tocbibind}
+
+\RequirePackage[
+  figureposition=bottom,
+  font=onehalfspacing,
+  labelfont=bf,
+  tableposition=top,
+]{caption}
+\renewcommand*{\theContinuedFloat}{\alph{ContinuedFloat}}
+
+\RequirePackage{stfloats}
+\fnbelowfloat
+
+\RequirePackage{tikz}
+\usetikzlibrary{
+  arrows.meta,
+  calc,
+  decorations.markings,
+  fit,
+  overlay-beamer-styles,
+}
+
+\RequirePackage[edges]{forest}
+
+\RequirePackage{pgfplots}
+\pgfplotsset{
+  compat=newest,
+  cycle list name=color list,
+  every axis plot/.append style={
+    black,
+    line join=round,
+    thick,
+  },
+  hide obscured x ticks=false,
+  major tick length=0.5em,
+  width=0.95\linewidth,
+  samples=101,
+  scale=1.0,
+}
+
+\setkeys{Gin}{
+  keepaspectratio,
+  totalheight=\textheight,
+  width=0.95\linewidth,
+}
+
+\RequirePackage{floatrow}
+\floatsetup[figure]   {capposition=bottom}
+\floatsetup[subfigure]{capposition=bottom}
+\floatsetup[table]    {capposition=top}
+
+\setcounter{topnumber}   {3}
+\setcounter{bottomnumber}{1}
+\setcounter{totalnumber} {5}
+\setcounter{dbltopnumber}{2}
+
+\renewcommand*{\topfraction}         {0.7}
+\renewcommand*{\bottomfraction}      {0.4}
+\renewcommand*{\textfraction}        {0.1}
+\renewcommand*{\floatpagefraction}   {0.7}
+\renewcommand*{\dbltopfraction}      {0.7}
+\renewcommand*{\dblfloatpagefraction}{0.7}
+
+\setlength{\intextsep}   {0.8em plus 0.2em minus 0.2em}
+\setlength{\textfloatsep}{1.0em plus 0.2em minus 0.2em}
+
+\RequirePackage{xspace}
+\RequirePackage[export]{adjustbox}
+\RequirePackage{float}
+\RequirePackage{longtable}
+\RequirePackage{lscape}
+\RequirePackage{multirow}
+\RequirePackage{flafter}
+\RequirePackage[section]{placeins}
+\RequirePackage{makecell}
+\renewcommand*{\theadfont}{\bfseries}
+
+\RequirePackage{multicol}
+\setlength{\multicolsep}{0em}
+
+\newcommand*{\HRule}            {\rule{\linewidth}{0.5mm}}
+\newcommand*{\specialcell}[2][c]{\begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+\makeatletter
+\newcommand*{\input@path}{{Sections/}}
+\makeatother
+\graphicspath{{Images/}}
+
+\makeatletter
+\renewcommand*{\listof}[2]{
+  \@ifundefined{ext@#1}{\float@error{#1}}{
+    \expandafter\let\csname l@#1\endcsname \l@figure
+    \float@listhead{#2}
+    \addcontentsline{toc}{section}{#2}
+    \begingroup
+      \@starttoc{\@nameuse{ext@#1}}
+    \endgroup
+  }
+}
+\makeatother
+
+% -------------- Code ---------------
+\RequirePackage{listings}
+\RequirePackage{dirtree}
+
+\RequirePackage{minted}
+\setminted{
+  baselinestretch=1,
+  breaklines=true,
+  mathescape,
+  style=default,
+}
+
+\RequirePackage[most]{tcolorbox}
+\tcbset{
+  enhanced,
+  hyphenationfix,
+  oversize,
+}
+
+\BeforeBeginEnvironment{minted}{\begin{tcolorbox}}
+\AfterEndEnvironment   {minted}{\end{tcolorbox}}
+
+\let\oldinputminted\inputminted
+\RenewDocumentCommand{\inputminted}{O{} m m}{
+  \begin{tcolorbox}
+    \oldinputminted[#1]{#2}{#3}
+  \end{tcolorbox}
+}
+
+% ----------- Algorithms ------------
+% Alternatively, check out clrscode4e: https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/11599/clrscode4e.pdf
+\RequirePackage{algorithm}
+\RequirePackage{algpseudocode}
+
+% ---------- Bibliography -----------
+\RequirePackage[
+  backend=biber,
+  dateabbrev=false,
+  doi=true,
+  giveninits=true,
+  isbn=true,
+  maxbibnames=99,
+  maxcitenames=3,
+  minalphanames=3,
+  sortcites=true,
+  style=alphabetic,
+  uniquename=init,
+  urldate=long,
+]{biblatex}
+\addbibresource{references.bib}
+\DeclareNameAlias{sortname}{family-given}
+\DeclareDelimFormat{nameyeardelim}{\addcomma\space}
+
+\NewDocumentCommand{\textscite}{O{} m}{%
+  \citeauthor{#2}'s [\citeyear[#1]{#2}]%
+}
+
+% ----------- Referencing -----------
+\RequirePackage[
+  unicode,
+  breaklinks=true,
+  colorlinks,
+  citecolor=black,
+  filecolor=black,
+  linkcolor=black,
+  urlcolor=black,
+]{hyperref}
+\RequirePackage{bookmark}
+\RequirePackage[norefs]{refcheck}
+
+\let\eval\relax
+\RequirePackage[
+  advantage,
+  adversary,
+  asymptotics,
+  complexity,
+  events,
+  ff,
+  keys,
+  lambda,
+  landau,
+  logic,
+  mm,
+  notions,
+  operators,
+  oracles,
+  primitives,
+  probability,
+  sets,
+]{cryptocode}
+\let\AC\relax
+
+\createprocedureblock {expproc}{center,boxed}{}{$\mathrm{Experiment}$}{}
+\createprocedureblock {procb}  {center,boxed}{}{}                     {}
+\createpseudocodeblock{pcb}    {center,boxed}{}{}                     {}
+
+\newcommand*{\answer}     {\pcalgostyle{Answer}}
+\newcommand*{\commit}     {\pcalgostyle{Com}}
+\newcommand*{\detect}     {\pcalgostyle{Detect}}
+\newcommand*{\extend}     {\pcalgostyle{Extend}}
+\newcommand*{\gen}        {\pcalgostyle{Gen}}
+\newcommand*{\ideal}      {\pcalgostyle{Ideal}}
+\newcommand*{\len}        {\pcalgostyle{len}}
+\newcommand*{\Mark}       {\pcalgostyle{Mark}}
+\newcommand*{\query}      {\pcalgostyle{Query}}
+\newcommand*{\real}       {\pcalgostyle{Real}}
+\newcommand*{\reconstruct}{\pcalgostyle{Reconstruct}}
+\newcommand*{\seal}       {\pcalgostyle{Seal}}
+\newcommand*{\share}      {\pcalgostyle{Share}}
+\newcommand*{\unseal}     {\pcalgostyle{Unseal}}
+\newcommand*{\view}       {\pcalgostyle{View}}
+
+\newcommand*{\circuit}     {\mathcal{C}}
+\newcommand*{\proveralgo}  {\mathcal{P}}
+\newcommand*{\verifieralgo}{\mathcal{V}}
+
+\newcommand*{\groth}    {\pcalgostyle{Groth16}}
+\newcommand*{\mimc}     {\pcalgostyle{MiMC}}
+\newcommand*{\pinocchio}{\pcalgostyle{Pinocchio}}
+\newcommand*{\poseidon} {\pcalgostyle{Poseidon}}
+\newcommand*{\plonk}    {\mathcal{P}\mathfrak{lon}\mathcal{K}}
+\newcommand*{\rescue}   {\pcalgostyle{Rescue}}
+\newcommand*{\sha}      {\pcalgostyle{\glsxtrshort*{sha}\pcmathhyphen{}256}}
+\newcommand*{\vision}   {\pcalgostyle{Vision}}
+
+\newcommand*{\dtime} {\pccomplexitystyle{DTIME}}
+\newcommand*{\ip}    {\pccomplexitystyle{IP}}
+\newcommand*{\pspace}{\pccomplexitystyle{PSPACE}}
+
+\newcommand*{\ans}   {\key[ans]}
+\newcommand*{\cert}  {\key[cert]}
+\newcommand*{\com}   {\key[com]}
+\newcommand*{\ct}    {\key[ct]}
+\newcommand*{\cteval}{\tilde{\ct}}
+\newcommand*{\ek}    {\key[ek]}
+\newcommand*{\ppar}  {\key[pp]}
+\newcommand*{\pt}    {\key[pt]}
+\newcommand*{\vkey}  {\key[vk]}
+\newcommand*{\qu}    {\key[qu]}
+
+\newcommand*{\hit}  {\key[hit]}
+\newcommand*{\miss} {\key[miss]}
+\newcommand*{\mroot}{\ensuremath{R}}
+
+\renewcommand*{\expect}[1]{\operatorname{\expectationname}\del{#1}}
+\renewcommand*{\prob}  [1]{\operatorname{\probname}\del{#1}}
+\renewcommand*{\smallO}[1]{o\del{#1}}
+
+\renewcommand*{\kgen}    {\pcalgostyle{Key}\gen}
+\renewcommand*{\probname}{\mathbb{P}}
+\renewcommand*{\sample}  {\rgets}
+\renewcommand*{\verify}  {\pcalgostyle{Ver}}
+
+\newcommand*{\funs} [2]{\pcalgostyle{Funs}\del{#1, #2}} % func1, func2
+\newcommand*{\perms}[1]{\pcalgostyle{Perms}\del{#1}}    % func
+
+\newcommand*{\cpa} {\pcalgostyle{CPA}}
+\newcommand*{\cpaadv}[2]{\cpa\pcadvantagename\del{#1, #2}} % adv, func
+\newcommand*{\prfadv}[2]{\prf\pcadvantagename\del{#1, #2}} % adv, func
+\newcommand*{\prpadv}[2]{\prp\pcadvantagename\del{#1, #2}} % adv, func
+
+\newcommand*{\expectsq}[1]         {\operatorname{\expectationname}\sq\del{#1}}
+\newcommand*{\gf}      [1]         {\pcalgostyle{GF}\sbr{#1}}
+\newcommand*{\polylog} [1][\secpar]{\pcpolynomialstyle{polylog}\ifthenelse{\equal{#1}{}}{}{\del{#1}}}
+
+\newcommand*{\smallOmegatilde}[1]{\tilde{\omega}\del{#1}}
+\newcommand*{\bigOmegatilde}  [1]{\widetilde{\Omega}\del{#1}}
+\newcommand*{\bigThetatilde}  [1]{\widetilde{\Theta}\del{#1}}
+\newcommand*{\bigOtilde}      [1]{\widetilde{\mathcal{O}}\del{#1}}
+\newcommand*{\smallOtilde}    [1]{\tilde{o}\del{#1}}
+
+\RequirePackage[
+  capitalise,
+  nameinlink,
+  noabbrev,
+]{cleveref}
+\creflabelformat{ineq}{#2\textup{(#1)}#3}
+\creflabelformat{inva}{#2\textup{(#1)}#3}
+
+\newcommand*{\creflastconjunction}     {, and~}
+\newcommand*{\creflastgroupconjunction}{, and~}
+
+\makeatletter
+\newcommand*{\refcheckize}[1]{%
+  \expandafter\let\csname @@\string#1\endcsname#1%
+  \expandafter\DeclareRobustCommand\csname relax\string#1\endcsname[1]{%
+    \csname @@\string#1\endcsname{##1}%
+    \@for\@temp:=##1\do{%
+      \wrtusdrf{\@temp}%
+      \wrtusdrf{{\@temp}}%
+    }%
+  }%
+  \expandafter\let\expandafter#1\csname relax\string#1\endcsname%
+}
+\makeatother
+
+\refcheckize{\cref}
+\refcheckize{\Cref}
+\refcheckize{\nameref}
+
+\PassOptionsToPackage{lang-warn=false}{datatool-base}
+% More styles: https://www.dickimaw-books.com/gallery/glossaries-styles/
+\RequirePackage[
+  acronyms,
+  automake,
+  nomain,
+  shortcuts,
+  style=altlong4col,
+  translate=babel,
+]{glossaries-extra}
+
+\newcommand*{\symboltype}    {symbols}
+\newcommand*{\initialismtype}{initialism}
+\newcommand*{\initialismname}{Initialisms}
+
+\newglossary*{\initialismtype}{\initialismname}
+\NewDocumentCommand{\newinitialism}{O{} m m m}{
+  \newabbreviation[type=\initialismtype,#1]{#2}{#3}{#4}
+}
+
+\setabbreviationstyle              {long-short}
+\setabbreviationstyle[\acronymtype]{long-short}
+
+\loadglsentries{glossary}
+\GlsXtrEnableEntryCounting{\acronymtype,abbreviation}{2}
+
+% Minmax these:
+\setlength{\glsdescwidth}    {0.49\linewidth}
+\setlength{\glspagelistwidth}{0.37\linewidth}
+
+\renewcommand*{\printglossaries}{
+  \clearpage
+  \printglossary[type=\acronymtype]
+  \printglossary[type=\initialismtype]
+}
+
+\newcommand*{\cGlsshort}  [1]{\texorpdfstring{\Glsxtrshort*{#1}}  {\glsentryshort{#1}}}
+\newcommand*{\cglsshort}  [1]{\texorpdfstring{\glsxtrshort*{#1}}  {\glsentryshort{#1}}}
+\newcommand*{\cGlsshortpl}[1]{\texorpdfstring{\Glsxtrshortpl*{#1}}{\glsentryshort{#1}}}
+\newcommand*{\cglsshortpl}[1]{\texorpdfstring{\glsxtrshortpl*{#1}}{\glsentryshort{#1}}}
+\newcommand*{\cGlslong}   [1]{\texorpdfstring{\Glsxtrlong*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cglslong}   [1]{\texorpdfstring{\glsxtrlong*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cGlslongpl} [1]{\texorpdfstring{\Glsxtrlongpl*{#1}} {\glsentryshort{#1}}}
+\newcommand*{\cglslongpl} [1]{\texorpdfstring{\glsxtrlongpl*{#1}} {\glsentryshort{#1}}}
+\newcommand*{\cGlsfull}   [1]{\texorpdfstring{\Glsxtrfull*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cglsfull}   [1]{\texorpdfstring{\glsxtrfull*{#1}}   {\glsentryshort{#1}}}
+\newcommand*{\cGlsfullpl} [1]{\texorpdfstring{\Glsxtrfullpl*{#1}} {\glsentryshort{#1}}}
+\newcommand*{\cglsfullpl} [1]{\texorpdfstring{\glsxtrfullpl*{#1}} {\glsentryshort{#1}}}
+
+% ------------- General -------------
+\RequirePackage[
+  shortcuts,
+  wordspacearound,
+]{extdash}
+
+\RequirePackage[
+  exponent-product=\cdot,
+  per-mode=symbol,
+]{siunitx}
+\DeclareSIUnit{\nothing}{\relax}
+\DeclareSIUnit{\bit}    {b}
+\DeclareSIUnit{\mile}   {mile}
+\DeclareSIUnit{\packet} {packet}
+\DeclareSIUnit{\packets}{packets}
+\DeclareSIUnit{\symbol} {sym}
+
+\newcommand*{\datestring}{Date}
+\RequirePackage[
+  level,
+  nodayofweek,
+]{datetime}
+
+\RequirePackage{array}
+\RequirePackage{comment}
+\RequirePackage{csquotes}
+\RequirePackage{lipsum}
+\RequirePackage{pdfpages}
+
+\RequirePackage{booktabs}
+\UseTblrLibrary{booktabs}
+
+\RequirePackage[inline]{enumitem}
+\setlistdepth{5}
+\setlist[enumerate,1]{label=(\arabic*)}
+\setlist[enumerate,2]{label=(\alph*)}
+\setlist[enumerate,3]{label=(\roman*)}
+\setlist[enumerate,4]{label=(\Alph*)}
+\setlist[enumerate,5]{label=(\Roman*)}
+\renewlist{enumerate}{enumerate}{5}
+
+\RequirePackage{xurl}
+
+% --- Page layout and formatting ----
+\RequirePackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand*{\headrulewidth}{0.05em}
+\renewcommand*{\footrulewidth}{0.05em}
+\fancyfoot[C]{\thepage}
+
+\RequirePackage{nth}
+\newcommand*{\Romannumeral}[1]{\MakeUppercase{\romannumeral #1}}
+
+% ---- Numbering within sections ----
+\ifnum\value{secnumdepth} > 0
+  \numberwithin{equation} {section}
+  \numberwithin{figure}   {section}
+  \numberwithin{ineq}     {section}
+  \numberwithin{inva}     {section}
+  \numberwithin{table}    {section}
+  \numberwithin{algorithm}{section}
+  \numberwithin{listing}  {section}
+\fi
+
+% ------------ Language -------------
+\addto{\captionsamerican}{
+  \renewcommand*{\contentsname}     {Table of Contents}
+  \renewcommand*{\abbreviationsname}{Abbreviations}
+  \crefname{ineq}         {Inequality}   {Inequalities}
+  \crefname{inva}         {Invariant}    {Invariants}
+  \crefname{subsection}   {Subsection}   {Subsections}
+  \crefname{subsubsection}{Subsubsection}{Subsubsections}
+}
+
+\DeclareSymbolFont{operatorsT1}{T1}{cmr}{m}{n}
+\DeclareMathSymbol{\mlq}{\mathord}{operatorsT1}{16}
+\DeclareMathSymbol{\mrq}{\mathord}{operatorsT1}{17}
+
+\endinput

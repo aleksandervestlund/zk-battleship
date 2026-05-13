@@ -1,0 +1,29 @@
+\documentclass[12pt,american]{article}
+\usepackage{packages}
+\usepackage{preamble}
+
+\begin{document}
+    \maketitle
+    \input{Sections/0_Frontmatter}
+    \thispagestyle{empty}
+    \frontmatter
+    \tableofcontents
+    \listoffigures
+    \listoftables
+    \listoflistings
+
+    \mainmatter
+    \input{Sections/1_Introduction}
+    \input{Sections/2_Related_work}
+    \input{Sections/3_Methodology}
+    \input{Sections/4_Results}
+    \input{Sections/5_Discussion}
+    \input{Sections/6_Conclusion}
+    \input{Sections/7_Contributions}
+    \input{Sections/8_Acknowledgements}
+    \clearpage
+    \printbibliography[heading=bibintoc]
+    \printglossaries
+    \addappendix
+    \input{99_Appendix}
+\end{document}

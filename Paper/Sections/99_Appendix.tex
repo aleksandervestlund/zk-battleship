@@ -1,0 +1,372 @@
+As stated previously, all code is available at \citeurl{zkBattleship} \cite{zkBattleship}.
+
+\section{Na{\"\i}ve Circuits}
+
+\subsection{Initial Proof Circuit}
+\label{subsec:initialProofCircuit}
+
+\begin{listing}[H]
+    \ContinuedFloat*
+    \begin{minted}{js}
+pragma circom 2.1.6;
+
+include "circomlib/circuits/comparators.circom";
+include "circomlib/circuits/poseidon.circom";
+
+template ValidShip(L) {
+    signal input X[L];
+    signal input Y[L];
+
+    component isYEq[L - 1];
+    component isXInc[L - 1];
+    signal isHorizontal[L];
+    signal horizStep[L - 1];
+    isHorizontal[0] <== 1;
+
+    component isXEq[L - 1];
+    component isYInc[L - 1];
+    signal isVertical[L];
+    signal vertStep[L - 1];
+    isVertical[0] <== 1;
+
+    for (var i = 0; i < L - 1; i++) {
+        isYEq[i] = IsEqual();
+        isYEq[i].in[0] <== Y[i];
+        isYEq[i].in[1] <== Y[i + 1];
+
+        isXInc[i] = IsEqual();
+        isXInc[i].in[0] <== X[i] + 1;
+    \end{minted}
+    \caption{Na{\"\i}ve commitment for two coordinates.}
+    \label{lst:initialProofCircuitNaiveA}
+\end{listing}
+
+\begin{listing}[H]
+    \ContinuedFloat
+    \begin{minted}{js}
+        isXInc[i].in[1] <== X[i + 1];
+
+        horizStep[i] <== isYEq[i].out * isXInc[i].out;
+        isHorizontal[i + 1] <== isHorizontal[i] * horizStep[i];
+
+        isXEq[i] = IsEqual();
+        isXEq[i].in[0] <== X[i];
+        isXEq[i].in[1] <== X[i + 1];
+
+        isYInc[i] = IsEqual();
+        isYInc[i].in[0] <== Y[i] + 1;
+        isYInc[i].in[1] <== Y[i + 1];
+
+        vertStep[i] <== isXEq[i].out * isYInc[i].out;
+        isVertical[i + 1] <== isVertical[i] * vertStep[i];
+    }
+
+    isHorizontal[L - 1] + isVertical[L - 1] === 1;
+}
+
+template BoardSetup(N) {
+    signal input privShipX[N];
+    signal input privShipY[N];
+    signal input privSalt;
+
+    signal output pubCommitment;
+
+    component lessX[N];
+    component lessY[N];
+
+    for (var i = 0; i < N; i++) {
+        lessX[i] = LessThan(4);
+        lessX[i].in[0] <== privShipX[i];
+        lessX[i].in[1] <== 10;
+        lessX[i].out === 1;
+
+        lessY[i] = LessThan(4);
+        lessY[i].in[0] <== privShipY[i];
+        lessY[i].in[1] <== 10;
+        lessY[i].out === 1;
+    }
+    \end{minted}
+    \caption{Na{\"\i}ve commitment for two coordinates (continued).}
+    \label{lst:initialProofCircuitNaiveB}
+\end{listing}
+
+\begin{listing}[H]
+    \ContinuedFloat
+    \begin{minted}{js}
+    component eqX[N][N];
+    component eqY[N][N];
+
+    for (var i = 0; i < N; i++) {
+        for (var j = i + 1; j < N; j++) {
+            eqX[i][j] = IsEqual();
+            eqX[i][j].in[0] <== privShipX[i];
+            eqX[i][j].in[1] <== privShipX[j];
+
+            eqY[i][j] = IsEqual();
+            eqY[i][j].in[0] <== privShipY[i];
+            eqY[i][j].in[1] <== privShipY[j];
+
+            eqX[i][j].out * eqY[i][j].out === 0;
+        }
+    }
+
+    component ship = ValidShip(N);
+
+    for (var i = 0; i < N; i++) {
+        ship.X[i] <== privShipX[i];
+        ship.Y[i] <== privShipY[i];
+    }
+
+    component hasher = Poseidon(2 * N + 1);
+    
+    for (var i = 0; i < N; i++) {
+        hasher.inputs[i] <== privShipX[i];
+        hasher.inputs[i + N] <== privShipY[i];
+    }
+
+    hasher.inputs[2 * N] <== privSalt;
+    pubCommitment <== hasher.out;
+}
+
+component main = BoardSetup(2);
+    \end{minted}
+    \caption{Na{\"\i}ve commitment for two coordinates (continued).}
+    \label{lst:initialProofCircuitNaiveC}
+\end{listing}
+
+This circuit is available here: \url{https://github.com/aleksandervestlund/zk-battleship/blob/master/circuits/board_commit2.circom}. For the other numbers of ship coordinates, the \mintinline{js}{2} on the last line in \cref{lst:initialProofCircuitNaiveC} is replaced with the respective number of ship coordinates.
+
+\subsection{Validating Hit Circuit}
+
+\begin{listing}[H]
+    \ContinuedFloat*
+    \begin{minted}{js}
+pragma circom 2.1.6;
+
+include "circomlib/circuits/comparators.circom";
+include "circomlib/circuits/poseidon.circom";
+
+template BattleshipHit(N) {
+    signal input pubGuessX;
+    signal input pubGuessY;
+    signal input pubCommitment;
+    signal input pubReportedHit; // 1 (Hit) or 0 (Miss)
+
+    signal input privShipX[N];
+    signal input privShipY[N];
+    signal input privSalt;
+
+    component hasher = Poseidon(2 * N + 1);
+
+    for (var i = 0; i < N; i++) {
+        hasher.inputs[i] <== privShipX[i];
+        hasher.inputs[i + N] <== privShipY[i];
+    }
+
+    hasher.inputs[2 * N] <== privSalt;
+    pubCommitment === hasher.out;
+    
+    component eqX[N];
+    component eqY[N];
+    signal hitMatch[N];
+    
+    signal hitAccumulator[N + 1];
+    hitAccumulator[0] <== 0;
+
+    for (var i = 0; i < N; i++) {
+        eqX[i] = IsEqual();
+    \end{minted}
+    \caption{Na{\"\i}ve $\hit$ validating circuit for two coordinates.}
+\end{listing}
+
+\begin{listing}[H]
+    \ContinuedFloat
+    \begin{minted}{js}
+        eqX[i].in[0] <== pubGuessX;
+        eqX[i].in[1] <== privShipX[i];
+
+        eqY[i] = IsEqual();
+        eqY[i].in[0] <== pubGuessY;
+        eqY[i].in[1] <== privShipY[i];
+
+        hitMatch[i] <== eqX[i].out * eqY[i].out;
+        hitAccumulator[i + 1] <== hitAccumulator[i] + hitMatch[i];
+    }
+        
+    pubReportedHit === hitAccumulator[N];
+}
+
+component main {public [pubGuessX, pubGuessY, pubCommitment, pubReportedHit]} = BattleshipHit(2);
+    \end{minted}
+    \caption{Na{\"\i}ve $\hit$ validating circuit for two coordinates (continued).}
+    \label{lst:hitValidatingCircuitNaiveC}
+\end{listing}
+
+This circuit is available here: \url{https://github.com/aleksandervestlund/zk-battleship/blob/master/circuits/battleship_hit2.circom}. For the other numbers of ship coordinates, the \mintinline{js}{2} on the last line in \cref{lst:hitValidatingCircuitNaiveC} is replaced with the respective number of ship coordinates.
+
+\section{Merkle Tree Initial Proof Circuit}
+\label{sec:initialProofCircuit}
+
+\begin{listing}[H]
+    \ContinuedFloat*
+    \begin{minted}{js}
+pragma circom 2.1.6;
+
+include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/comparators.circom";
+
+template ValidShip(L) {
+    signal input X[L];
+    signal input Y[L];
+    \end{minted}
+    \caption{Merkle tree commitment for two coordinates.}
+    \label{lst:initialProofCircuitMerkleA}
+\end{listing}
+
+\begin{listing}[H]
+    \ContinuedFloat
+    \begin{minted}{js}
+    component isYEq[L - 1];
+    component isXInc[L - 1];
+    signal isHorizontal[L];
+    signal horizStep[L - 1];
+    isHorizontal[0] <== 1;
+
+    component isXEq[L - 1];
+    component isYInc[L - 1];
+    signal isVertical[L];
+    signal vertStep[L - 1];
+    isVertical[0] <== 1;
+
+    for (var i = 0; i < L - 1; i++) {
+        isYEq[i] = IsEqual();
+        isYEq[i].in[0] <== Y[i];
+        isYEq[i].in[1] <== Y[i + 1];
+
+        isXInc[i] = IsEqual();
+        isXInc[i].in[0] <== X[i] + 1;
+        isXInc[i].in[1] <== X[i + 1];
+
+        horizStep[i] <== isYEq[i].out * isXInc[i].out;
+        isHorizontal[i + 1] <== isHorizontal[i] * horizStep[i];
+
+        isXEq[i] = IsEqual();
+        isXEq[i].in[0] <== X[i];
+        isXEq[i].in[1] <== X[i + 1];
+
+        isYInc[i] = IsEqual();
+        isYInc[i].in[0] <== Y[i] + 1;
+        isYInc[i].in[1] <== Y[i + 1];
+
+        vertStep[i] <== isXEq[i].out * isYInc[i].out;
+        isVertical[i + 1] <== isVertical[i] * vertStep[i];
+    }
+
+    isHorizontal[L - 1] + isVertical[L - 1] === 1;
+}
+
+template BoardSetup() {
+    signal input privShipX[2];
+    \end{minted}
+    \caption{Merkle tree commitment for two coordinates (continued).}
+    \label{lst:initialProofCircuitMerkleB}
+\end{listing}
+
+\begin{listing}[H]
+    \ContinuedFloat
+    \begin{minted}{js}
+    signal input privShipY[2];
+    signal input privSalt;
+    signal output pubCommitment;
+
+    signal leaves[4];
+
+    component lessX[2];
+    component lessY[2];
+
+    lessX[0] = LessThan(4);
+    lessX[0].in[0] <== privShipX[0];
+    lessX[0].in[1] <== 10;
+    lessX[0].out === 1;
+
+    lessY[0] = LessThan(4);
+    lessY[0].in[0] <== privShipY[0];
+    lessY[0].in[1] <== 10;
+    lessY[0].out === 1;
+
+    leaves[0] <== privShipX[0] * 10 + privShipY[0] + 1;
+
+    lessX[1] = LessThan(4);
+    lessX[1].in[0] <== privShipX[1];
+    lessX[1].in[1] <== 10;
+    lessX[1].out === 1;
+
+    lessY[1] = LessThan(4);
+    lessY[1].in[0] <== privShipY[1];
+    lessY[1].in[1] <== 10;
+    lessY[1].out === 1;
+
+    leaves[1] <== privShipX[1] * 10 + privShipY[1] + 1;
+    leaves[2] <== privSalt;
+    leaves[3] <== 0;
+
+    component eq[1];
+    eq[0] = IsEqual();
+
+    var pairIdx = 0;
+
+    for (var i = 0; i < 2; i++) {
+    \end{minted}
+    \caption{Merkle tree commitment for two coordinates (continued).}
+    \label{lst:initialProofCircuitMerkleC}
+\end{listing}
+
+\begin{listing}[H]
+    \ContinuedFloat
+    \begin{minted}{js}
+        for (var j = i + 1; j < 2; j++) {
+            eq[pairIdx].in[0] <== privShipX[i] * 10 + privShipY[i];
+            eq[pairIdx].in[1] <== privShipX[j] * 10 + privShipY[j];
+            eq[pairIdx].out === 0;
+            pairIdx++;
+        }
+    }
+        
+    component ship0 = ValidShip(2);
+    ship0.X[0] <== privShipX[0];
+    ship0.Y[0] <== privShipY[0];
+    ship0.X[1] <== privShipX[1];
+    ship0.Y[1] <== privShipY[1];
+
+    signal nodes[3][4];
+    nodes[0][0] <== leaves[0];
+    nodes[0][1] <== leaves[1];
+    nodes[0][2] <== leaves[2];
+    nodes[0][3] <== leaves[3];
+
+    component hasher[3];
+    hasher[0] = Poseidon(2);
+    hasher[0].inputs[0] <== nodes[0][0];
+    hasher[0].inputs[1] <== nodes[0][1];
+    nodes[1][0] <== hasher[0].out;
+
+    hasher[1] = Poseidon(2);
+    hasher[1].inputs[0] <== nodes[0][2];
+    hasher[1].inputs[1] <== nodes[0][3];
+    nodes[1][1] <== hasher[1].out;
+
+    hasher[2] = Poseidon(2);
+    hasher[2].inputs[0] <== nodes[1][0];
+    hasher[2].inputs[1] <== nodes[1][1];
+    nodes[2][0] <== hasher[2].out;
+
+    pubCommitment <== nodes[2][0];
+}
+
+component main = BoardSetup();
+    \end{minted}
+    \caption{Merkle tree commitment for two coordinates (continued).}
+    \label{lst:initialProofCircuitMerkleD}
+\end{listing}
+
+This circuit is available here: \url{https://github.com/aleksandervestlund/zk-battleship/blob/master/circom_scripts/test/autogen_circuit2.circom}. It was generated using the following script: \url{https://github.com/aleksandervestlund/zk-battleship/blob/master/circom_scripts/gen_circom_1.py}. For the other numbers of ship coordinates, the Merkle trees need to be constructed such that the tree is complete.

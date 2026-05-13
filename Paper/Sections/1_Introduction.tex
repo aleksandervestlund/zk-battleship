@@ -1,0 +1,54 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Decentralized systems require a shift from server\-/side trust to mathematical certainty. In a \gls{p2p} setting, ensuring the integrity of the game without a central mediator is a significant challenge. This project utilizes \glspl{zkp} to implement a trustless version of Battleship, allowing players to prove compliance with rules without revealing their private board states.
+
+\subsection{\cGlslongpl{zkp}}
+
+\Glsxtrlongpl{zkp} are a class of cryptographic protocols that allow one party, the \emph{prover} $\prover$, to convince another party, the \emph{verifier} $\verifier$, that a statement is $\true$ without revealing any additional information beyond the validity of the statement itself. The concept was first introduced in \citeyear{goldwasser89} by \textcite{goldwasser89} in their foundational work on \glsxtrfull{ip} systems. Their research established the theoretical basis for proving knowledge while preserving privacy, introducing the idea that correctness and confidentiality can coexist in the same protocol.
+
+In recent years, \glspl{zkp} have evolved from a theoretical cryptographic concept into a practical, widely adopted tool used in modern distributed systems. The early \gls{ZK}\glsunset{zk} systems were highly interactive and computationally expensive, limiting their applicability outside academia. Advances in proof systems such as \gls{zk}\=/\glspl{snark} and \gls{zk}\=/\glspl{stark} enabled significantly smaller proof sizes and faster verification times, making practical deployments feasible. Among modern protocols, $\groth$ \cite{groth16} is widely known for its succinct proof sizes and fast verification times.
+
+A central motivation behind \gls{ZK} systems is the ability to establish trust in environments where participants may not fully trust each other. Rather than trusting a server or another third party, participants trust the underlying mathematics of the protocol.
+
+This property makes \glspl{zkp} particularly compelling in multiplayer gaming environments, such as Battleship, which is the focus of our contribution. Many games require players to maintain hidden information while simultaneously proving that they are following the rules. In conventional online games, this responsibility is typically delegated to a centralized server. Although effective, this model requires that all players trust the server operator. In a \gls{p2p} setting, without a trusted authority, ensuring fair play is non\-/trivial because players may attempt to alter hidden information, forge game states, or reveal information selectively to gain an advantage.
+
+\subsection{Battleship}
+\label{subsec:battleship}
+
+Battleship is a classic two‑player board game. Each player arranges a set of ships with lengths in the multiset
+\begin{equation}\label{eq:L}
+    \mathcal{L} = \set{2, 3, 3, 4, 5}
+\end{equation}
+
+\noindent on a typically ten\-/by\-/ten private grid, hidden from the opponent. The players then take turns guessing coordinates on the opponent's grid, and the opponent truthfully states whether the guess is a $\hit$, if a part of a ship occupies that cell, or a $\miss$. The goal is to sink all of the opponent's ships first.
+
+A correct implementation must guarantee the following:
+\begin{itemize}
+    \item \textbf{Validity} \--- Each player's initial board satisfies the game rules. In other words, all ships must be placed contiguously within the ten\-/by\-/ten grid such that the required lengths in \cref{eq:L} are satisfied and no ships overlap.
+    \item \textbf{Honest responses} \--- An opponent's answer, $z \in \set{\hit, \miss}$, must be consistent with their ship placement. Without this guarantee, the integrity of the game is compromised, as players could claim $\false$ outcomes to gain an unfair advantage.
+    \item \textbf{Fair reveal} \--- A player cannot retroactively change their board after seeing the opponent's moves. If this were possible, a player could move ships based on the opposing party's ship\-/hitting strategy, giving an unfair advantage.
+\end{itemize}
+
+In a \gls{p2p} implementation without a trusted authority, each of these properties requires cryptographic enforcement.
+
+\subsection{Our Contribution}
+
+In this project, we implement a fully \gls{p2p}, efficiently scalable Battleship game where no trusted server mediates the interaction \cite{zkBattleship}. We design and compile arithmetic circuits covering two main functions:
+\begin{enumerate}
+    \item \textbf{Board validation} \--- Each player generates a proof that their initial ship configuration is legal, detailed in \cref{subsec:initialProof}. The resulting output commitment is public.
+    \item \textbf{Move verification} \--- When a player receives a guessed coordinate, they produce a proof that their public answer $z \in \set{\hit, \miss}$ follows from their committed board state. See \cref{subsec:validatingHits}.
+\end{enumerate}
+
+Crucially, our implementation ensures that even after the game concludes, players are not required to disclose their unhit ship coordinates. Therefore, if a player has constructed a \enquote{winning} board, it can be kept secret. In our implementation, we leverage Merkle tree structures, explored in \cref{subsec:merkle}, alongside the $\groth$ proving system, discussed in \cref{subsec:groth}, to construct scalable circuits with concise proofs, making the approach well suited for a \gls{p2p} setting.
+
+Our implementation is available at: \citeurl{zkBattleship} \cite{zkBattleship}.
+
+\subsection{Overview of Results}
+
+To evaluate the practicality of our approach, we conducted a performance analysis of the proving and verification procedures used throughout the game. In particular, we measured the time required to generate and verify the initial board state validation proof. These experiments were performed across varying numbers of ship coordinates in order to analyze how proof complexity scales with game state size. We compare two implementations:
+\begin{enumerate}
+    \item A na{\"\i}ve circuit design that directly encodes ship positions.
+    \item An optimized approach that incorporates Merkle tree structures for more efficient representation and verification of board data.
+\end{enumerate}
+Through these evaluations, we find that using Merkle trees all but eliminates the marginal cost of adding ship coordinates when computing the board commitment. These results are discussed in \cref{sec:results}.

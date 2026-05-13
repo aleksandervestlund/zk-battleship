@@ -1,0 +1,45 @@
+\section{Related Work}
+\label{sec:relatedWork}
+
+Our project sits at the intersection of three lines of research: cheat prevention in  multiplayer games, cryptographic techniques for conducting interactive protocols between distrustful parties without a trusted third party, and applying \glspl{zkp} to hidden\-/information games.
+
+\subsection{Anti-Cheat in Multiplayer Games}
+
+Cheating in online multiplayer games is an important problem in the distributed systems literature. \Textcite{yan05} classify a broad threat landscape, including client\-/side state manipulation, timing attacks, and player collusion. Battleship exposes a narrower but representative version of this problem: a player must keep their board hidden while still being unable to lie about it or change it after seeing the opponent's moves. A trusted server can record and validate this state, but in a \gls{p2p} setting there is no such referee.
+
+One response to this setting is the \enquote{lockstep} protocol \cite{baughman01}. In a lockstep protocol, each player commits to their next move using a cryptographic hash. All commitments are exchanged before any moves are revealed, preventing a player from choosing their move adaptively after observing their opponent's actions. Lockstep commits to a single \textit{action} per round and opens it within that same round, whereas our protocol commits to a player's hidden \textit{state} at the start of the game and the commitment is never opened. Each move can thus be verified in \gls{ZK} that the reported outcome $z$ is consistent with the committed state.
+
+A more recent approach is to replace the central server with a blockchain. \Textcite{kalra18} use smart contracts to record game state and validate updates, making the game auditable without relying on a single server. This removes one trusted party but introduces the latency and operational overhead of a distributed ledger. Our work studies a more direct approach: cryptographic anti\-/cheat guarantees in a direct channel between players.
+
+\subsection{Cryptographic Protocols Without a Trusted Referee}
+
+The general question of how mutually distrustful parties can carry out a hidden\-/information protocol without a trusted referee is one of the founding questions of modern cryptography. \Textcite{shamir81} posed and solved an early instance of this problem in their \citetitle{shamir81} protocol, which uses a commutative encryption scheme to allow two players to shuffle and deal cards over a communication channel such that neither can observe the other's hand and neither can cheat about their own. Although mental poker and \gls{ZK} Battleship differ in mechanics, they share an underlying cryptographic shape: a hidden initial state, a sequence of interactive moves, and a requirement that each player's reported actions be consistent with a state the other party cannot directly inspect.
+
+Commitment schemes provide the binding mechanism behind both lockstep and our protocol. \Textcite{blum83} introduced commitments through coin flipping over an untrusted channel, formalizing the idea that a party can bind itself to a value before revealing it. In lockstep, the committed value is later opened. In our protocol, the board commitment remains a public value against which later \glspl{zkp} are checked, so the hidden state does not need to be revealed.
+
+One broader theoretical setting our work fits into is secure \gls{mpc}. \Textcite{goldreich87} showed that, under standard assumptions, general multiparty functions can be computed without a trusted third party and without revealing private inputs. Battleship could be modeled in this stronger framework, with private boards and private guesses as inputs. Our protocol focuses on a narrower goal: guesses are visible, but the defender cannot change their committed state or lie about the result $z$. This goal satisfies our threat model and leads to succinct and independently verifiable proofs. For two parties, Yao's garbled circuits \cite{yao86} are a canonical technique for evaluating such a function, and oblivious transfer \cite{rabin81,even85} is the standard primitive used to supply private inputs to the garbled circuit. These tools are most relevant to the stronger version of the problem we discuss in the future work of this project, where one may want to hide not only the board but also the player's targeting strategy. 
+
+\subsection{\cGlslongpl{zkp} for Hidden-Information Games}
+\label{subsec:hiddenInformationGames}
+
+The closest prior implementation is \citetitle{gupta20} by \textcite{gupta20}. Like our work, it uses Circom \cite{circomlib} and snarkjs \cite{snarkjs} to prove that a battleship response is consistent with a committed private state. The primary difference is architectural: whereas their implementation relies on Ethereum smart contracts to manage state and verify proofs, our protocol exchanges commitments and proofs directly between peers. \cref{tab:comparison} summarizes this comparison.
+
+\begin{table}
+    \centering
+    \begin{tblr}{colspec={lll}}
+        \toprule
+        \thead{Feature}  & \thead{\cite{gupta20}}  & \thead{Our implementation} \\
+        \midrule
+        Network model    & Ethereum smart contract & Direct \gls{p2p} channel   \\
+        Proof toolchain  & Circom / snarkjs        & Circom / snarkjs           \\
+        State commitment & Public board hash       & Merkle tree root     \\
+        Verifier         & On\-/chain contract     & Local peer                 \\
+        \bottomrule
+    \end{tblr}
+    \caption{Comparison with the closest prior \glsxtrlong{ZK} Battleship implementation.}
+    \label{tab:comparison}
+\end{table}
+
+Beyond Battleship, the video game Dark Forest is a prominent deployed example of \glspl{zkp} in a hidden\-/state information game \cite{darkforest20intro, darkforest20init}. It is a real\-/time strategy game on Ethereum in which players keep the coordinates hidden while proving that the moves are valid. Dark Forest shows that \gls{ZK} mechanics can support a live game, but it also shares the blockchain\-/mediated architecture that our project avoids.
+
+Finally, \gls{ZK} techniques have also been applied to single\-/player puzzles. The Suguru construction of \textcite{robert22}, for instance, proves knowledge of a valid puzzle solution without revealing it. This line of work is adjacent since puzzle protocols prove knowledge of a static solution, while Battleship requires repeated proofs to remain consistent with a hidden state fixed at the beginning of an interactive game.

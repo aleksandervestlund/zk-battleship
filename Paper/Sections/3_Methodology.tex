@@ -1,0 +1,176 @@
+\section{Methodology}
+\label{sec:methodology}
+
+Our methodology follows a structured approach: \Cref{subsec:groth,subsec:circomsnarkjs} define the cryptographic primitives and tools required for verifiable computation in a \gls{p2p} environment. After defining our threat model in \cref{subsec:threatModel}, \cref{subsec:zkFriendly,subsec:merkle,subsec:initialProof,subsec:validatingHits,subsec:gameSequence} outline the arithmetic circuits defined to enforce the game rules of Battleship.
+
+\subsection{\texorpdfstring{$\groth$}{Groth16}}
+\label{subsec:groth}
+
+\textcite{groth16} introduced a proving protocol in \citeyear{groth16} that has become one of the most popular \gls{zk}\=/\glspl{snark}. Building upon $\pinocchio$ \cite{parno13}, the first widely used \gls{zk}\=/\gls{snark} implementation, $\groth$ significantly reduces proof sizes while speeding up proof verification. Both protocols follow a similar pipeline, transforming a computation function into a \gls{r1cs}, reducing the constraint system into a \gls{qap}, and generating proving and verification keys, $\del{\pk, \vkey}$, during a trusted setup phase.
+
+While the \gls{qap} already compresses many circuit constraints into a polynomial identity of the form
+\begin{equation*}
+    A\del{x}B\del{x} - C\del{x} = H\del{x}Z\del{x},
+\end{equation*}
+
+\noindent $\groth$ further compresses the resulting polynomial consistency checks into polynomial evaluations at a secret trapdoor $\tau$ generated during the trusted setup. The prover then constructs three elliptic\-/curve group elements $\del{A, B, C}$ that encode these blind evaluations. Verification then consists of checking a constant amount of bilinear pairing equations that together guarantee satisfaction of the original \gls{qap} relation. This substantially reduces both proof size and verifier complexity.
+
+While we also explored more recent \gls{zk}\=/\gls{snark} protocols such as \glsxtrfull{plonk} \cite{gabizon19}, we ultimately chose to use $\groth$ since it provides us with the fastest verification time. Since proof verification happens repeatedly throughout \gls{p2p} gameplay, minimizing verifier latency is crucial for maintaining low\-/latency user experience.
+
+\subsection{Circom and snarkjs}
+\label{subsec:circomsnarkjs}
+
+Circom \cite{circomlib} is a \gls{dsl} for constructing arithmetic circuits used in \gls{zk}\=/\gls{snark} systems. A Circom program defines computations over a finite field $\FF_p$ using signals and constraints, which are compiled into a \gls{r1cs}. Each \enquote{\mintinline{js}{===}} or \enquote{\mintinline{js}{<==}} directive expands into a quadratic constraint of the form
+\begin{equation*}
+    \Angle{\vect{a}_i, \vect{w}} \cdot \Angle{\vect{b}_i, \vect{w}} = \Angle{\vect{c}_i, \vect{w}}
+\end{equation*}
+
+\noindent over $\FF_p$, where $\vect{w}$ is the witness vector containing all circuit signals. Circom's compiler outputs a \mintinline{bash}{.r1cs} binary, a \gls{wasm} module that computes the witness from concrete inputs.
+
+snarkjs \cite{snarkjs} implements the remaining $\groth$ pipeline. It first ingests the \mintinline{bash}{.r1cs} and performs a reduction to a \gls{qap}. The prover must then perform elliptic‑curve multiplications to compute the three group elements $\del{A, B, C}$ from the witness and the \gls{qap} representation. snarkjs manages the setup, generating the proving key, $\pk$, and verification key, $\vkey$.
+
+During proof generation, snarkjs executes the compiled \gls{wasm} witness generator, then constructs the $\groth$ proof using the $\pk$ and the computed witness $\vect{w}$.
+
+\subsection{Threat Model}
+\label{subsec:threatModel}
+
+We consider a \gls{p2p} setting in which two mutually distrustful players may attempt to cheat by deviating from the rules of the Battleship game. In particular, a dishonest player may move their ships between rounds or falsely report a status $z$ to the attacker. We model both players as \gls{ppt} adversaries. Furthermore, we assume that communication between the two players occurs over an authenticated channel immune to tampering.
+
+Since our setting lacks a trusted centralized server, we do not attempt to defend against \gls{dos} attacks, premature disconnects, or refusal\-/to\-/participate attacks. Instead, we focus on guaranteeing correctness and privacy for players who continue to participate in the protocol. To this end, we assume the hardness of the \gls{ecdlp} and bilinear pairing\-/based assumptions that $\groth$ relies upon. We also assume that the \gls{srs} is generated honestly during a trusted setup phase and that the toxic waste is destroyed after this phase.
+
+Although these assumptions enable us to validate the correctness of the reports $z$ from each player, they do not prevent a dishonest player from cheating between rounds. To defend against a player who cheats by changing the location of their ships between rounds, our protocol requires each player to cryptographically commit to their board state before the first move.
+
+\subsection{\cGlslong{ZK}-Friendly Hashing Algorithms}
+\label{subsec:zkFriendly}
+
+The commitments that are used to ensure that the hidden state of the board is not changed throughout the game could be implemented through a standard cryptographic hash function. These functions are considered secure because they provide pre\-/image, second pre\-/image, and collision resistance. The \glsxtrfull{sha}\=/2 \cite{nist15} family of hash functions is the industry standard across domains including \gls{ssl}/\gls{tls} certificates, digital signatures, and Bitcoin. Furthermore, modern cryptographic standards are increasingly adopting the \glsxtrshort{sha}\=/3 family of hash functions \cite{dworkin15}.
+
+However, these traditional hashes, such as $\sha$ \cite{nist15}, are optimized for conventional hardware architectures and consequently rely heavily on bitwise operations such as $\XOR$s, rotations, and bit shifts. Although these operations are efficient on modern processors, they are expensive to represent within the arithmetic circuits over finite fields used in \glspl{zkp}. In particular, bitwise operations typically require a large number of \gls{r1cs} constraints when encoded into \gls{zk}\=/\gls{snark} circuits. To address this issue, \enquote{\gls{ZK}\-/friendly} hash functions were specifically designed to minimize the complexity of the arithmetic circuit. Rather than relying on binary operations, these constructions primarily use finite\-/field additions, modular arithmetic, and low\-/degree polynomial operations that can be represented compactly within arithmetic circuits. This substantially reduces constraint counts and, therefore, decreases proving time during \gls{zk}\=/\gls{snark} generation.
+
+There are multiple \gls{ZK}\-/friendly hash functions to choose from. These include, but are not limited to, \gls{mimc} \cite{albrecht16}, $\poseidon$ \cite{grassi19}, $\vision$, and $\rescue$ \cite{aly19}. Our primary objective when choosing the hash function was to minimize the number of \gls{r1cs} constraints. In addition, Circom, discussed in \cref{subsec:circomsnarkjs}, at the time of this writing, supports only \gls{mimc} and $\poseidon$. Furthermore, as \textcite[\pno~14]{grassi19} state, the number of \gls{r1cs} constraints in $\poseidon$ is significantly smaller than that of \gls{mimc}. For this reason, our implementation uses $\poseidon$, designed specifically for efficient use within arithmetic proof systems.
+
+One of the primary limitations of the $\poseidon$ hashing algorithm, also noted by the authors \cite[\ppno~8, 29]{grassi19}, is the hard upper bound on the number of inputs, which is 16. In the standardized Battleship game, as discussed in \cref{subsec:battleship}, the different lengths of the ships must be each of the lengths in the multiset from \cref{eq:L}, totaling 17 ship coordinates. Because our implementation requires a private salt in each node to achieve \glsxtrfull{indcpa}, and each coordinate consists of an $\del{x, y}$ tuple, the total number of required inputs amounts to
+\begin{equation*}
+    \underbrace{2}_{\abs{\dellr{x, y}}} \cdot \underbrace{17}_{\sum_{l_i \in \mathcal{L}} l_i} + \underbrace{1}_{\text{salt}} = 35.
+\end{equation*}
+
+\noindent Therefore, relying solely on Poseidon hashing, our na{\"\i}ve implementation cannot accommodate all ship coordinates, as it is limited to a maximum of
+\begin{equation}\label{eq:naiveCoords}
+    \floor{\frac{16 - 1}{2}} = \floor{\frac{15}{2}} = 7.
+\end{equation}
+
+\subsection{Merkle Trees}
+\label{subsec:merkle}
+
+The concept of Merkle trees was first introduced by \textcite{merkle90} in \citeyear{merkle90}. Merkle defined the function $\hash\del{i, j, \vect{Y}}$, where $F$ is a \gls{owf}, as follows \cite[\pno~228]{merkle90}:
+\begin{equation}\label{eq:merkle}
+    \begin{split}
+        &\del{1} \quad \hash\del{i, i, \vect{Y}} = F\del{\vect{Y}} \\
+        &\del{2} \quad \hash\del{i, j, \vect{Y}} = F\del{\dellr{\hash\del{i, \nicefrac{\del{i + j - 1}}{2}, \vect{Y}}, \hash\delr{\nicefrac{\del{i + j + 1}}{2}, j, \vect{Y}}}}
+    \end{split}
+\end{equation}
+
+\noindent In other words, leaf nodes contain the output of the \gls{owf} $F$ applied to its content, while inner nodes are the result of hashing the vector consisting of its two children, usually done by concatenation. \enquote{Using this method, only $\logtwo n$ transmissions are required,} \cite[\pno~228]{merkle90} assuming $n$ is a power of two. This is highly relevant to our implementation, as the height of the Merkle tree scales logarithmically with the number of inputs. Consequently, the \enquote{Merkle path}, the sequence of nodes from a given leaf $\ell_i$ to the root $\mroot$, also has a length of $\bigO{\log n}$.
+
+Consider the Merkle tree with eight leaf nodes $\ell_i$ given in \cref{fig:merkleTree}. Here, the leaf nodes are the hash of the coordinate of the ship, $\del{x, y}$, and a private random salt, $r_i$. In addition, the inner nodes are the hash of its children, which is the second line in \cref{eq:merkle}. This means that $h_{1,2}$ is the hash of the vector consisting of $\ell_1$ and $\ell_2$, $h_{1,4}$ is the hash of the vector consisting of $h_{1,2}$ and $h_{3,4}$, and lastly, $\mroot = h_{1,8}$ is the hash of the vector consisting of $h_{1,4}$ and $h_{5,8}$. Hence, to compute $R$ given the pre\-/image of $\ell_1$, the prover $\prover$ provides $\ell_2$, the verifier $\verifier$ computes $h_{1,2}$, and so on, given only $\set{\ell_2, h_{3,4}, h_{5,8}}$, which has a cardinality of $\bigO{\log n}$, as stated previously. In summary, the commitment is now the root $\mroot$ instead.
+
+Applying this to our Battleship implementation not only enables proving time to scale logarithmically with the number of ship coordinates but also circumvents the strict input limits described in \cref{eq:naiveCoords}.
+
+\begin{figure}
+    \centering
+    \begin{forest}
+        for tree={
+            draw,
+            grow=south,
+            inner sep=0.1em,
+            minimum height=2.25em,
+            minimum size=2.25em,
+            rounded corners,
+            s sep=2.25em,
+            text centered,
+        },
+        where n children=0{
+            fill=LimeGreen!20,
+        }{
+            fill=Violet!20,
+        }
+        [$\mroot$
+            [$h_{1,4}$
+                [$h_{1,2}$
+                    [$\ell_1$]
+                    [$\ell_2$]
+                ]
+                [$h_{3,4}$
+                    [$\ell_3$]
+                    [$\ell_4$]
+                ]
+            ]
+            [$h_{5,8}$
+                [$h_{5,6}$
+                    [$\ell_5$]
+                    [$\ell_6$]
+                ]
+                [$h_{7,8}$
+                    [$\ell_7$]
+                    [$\ell_8$]
+                ]
+            ]
+        ]
+    \end{forest}
+    \caption{Merkle tree example with eight leaf nodes.}
+    \label{fig:merkleTree}
+\end{figure}
+
+\subsection{Initial Proof}
+\label{subsec:initialProof}
+
+The public input to the circuit is the board commitment $C$, while the private witness consists of the board configuration $B$ and commitment randomness $r$. The prover demonstrates knowledge of a board configuration $B$ and randomness $r$ such that $C = \commit\del{B; r}$ and $B$ satisfies the Battleship placement rules. We represent each ship as an ordered sequence of occupied coordinates, $\del{\del{X_1, Y_1}, \ldots, \del{X_L, Y_L}}$ where $L$ is the ship length. To verify that a ship is valid, the circuit checks that the coordinates form either a horizontal or vertical contiguous sequence. In the horizontal case, all $Y_i$ values are equal, and the $X_i$ values increase by one at each step. In the vertical case, all $X_i$ values are equal, and the $Y_i$ values increase by one at each step.
+
+Beyond individual ship validity, the initial proof must also enforce global board validity. Each coordinate must lie within the board bounds, and no two occupied ship coordinates may overlap. Bounds checks ensure that every coordinate corresponds to a valid board square, while overlap checks compare each pair of occupied coordinates and reject configurations where both the $X$ and $Y$ coordinates agree. Together, these constraints guarantee that the committed witness corresponds to a legal battleship placement rather than an arbitrary collection of cells.
+
+After validating the board, the circuit computes a commitment to the full private board state using a \gls{ZK}\-/friendly hash function. All subsequent proofs of $z$ must be generated using a board witness that hashes to the same commitment. Thus, the initial proof establishes both the validity of the player's starting board and the immutable reference point used throughout the rest of the protocol.
+
+\subsection{Validating Hits}
+\label{subsec:validatingHits}
+
+After the initial board commitment phase, each subsequent move requires the defending player to prove that the reported outcome $z$ is consistent with the previously committed hidden board state. Unlike the initial proof construction, this circuit does not establish board validity from scratch. Instead, it verifies consistency between a queried coordinate and the already committed board witness.
+
+The public inputs to the circuit consist of the board commitment $C$, the queried shot coordinates $\del{x, y}$, and the reported outcome bit $b \in \bin$ indicating whether the move resulted in a $\hit$ or $\miss$. The private witness consists of the defender's board configuration $B$ together with the commitment randomness $r$.
+
+To validate a move, the circuit iterates through all occupied ship coordinates and performs equality checks against the queried location $\del{x, y}$. A $\hit$ is detected if there exists at least one occupied coordinate matching the queried position. Formally, the circuit computes
+\begin{equation*}
+    b = \bigvee_i \sbr{\del{X_i = x} \land \del{Y_i = y}},
+\end{equation*}
+
+\noindent where $\del{X_i, Y_i}$ ranges over all occupied ship coordinates in the private witness. The resulting boolean value is constrained to equal the public input $z$ supplied to the verifier.
+
+Finally, the circuit recomputes the board commitment using the private witness $\del{B, r}$ and enforces equality with the public commitment $C$. This guarantees that the result $z$ was computed relative to the same immutable board state established during the initial proof phase. The resulting $\groth$ proof, therefore, certifies the correctness of the reported gameplay outcome without revealing any additional information about the hidden board configuration.
+
+\subsection{Game Sequence}
+\label{subsec:gameSequence}
+
+Before gameplay begins, each player commits to their private board state by publishing a Merkle root, $\mroot$, derived from the board configuration and secret randomness. On each move, the defending player constructs a witness consisting of the private board configuration, randomness used in the commitment, and the queried board location. Using this witness, the prover generates a $\groth$ proof demonstrating that the reported outcome $z$ is consistent with the committed board state. At no point during gameplay is the full board configuration disclosed. Instead, correctness is enforced entirely through \glspl{zkp} relative to the committed board state. The procedure is shown below.
+
+\begin{pcimage}
+    \procb[colspace=0em]{\Glsxtrshort{ZK} Battleship}{
+        \textbf{Alice}                                           \<                              \< \textbf{Bob}                                                     \pclb
+        \pcintertext[dotted]{Setup / Commitment Phase}
+        B_A \gets \pcalgostyle{PlaceShips}\del{}                 \<                              \<                                                                  \\
+        r_A \sample \bin^{\secpar}                               \<                              \<                                                                  \\
+        \mroot_A \gets \commit\del{B_A; r_A}                     \<                              \<                                                                  \\
+                                                                 \< \sendmessageright*{\mroot_A} \<                                                                  \\
+                                                                 \<                              \< B_B \gets \pcalgostyle{PlaceShips}\del{}                         \\
+                                                                 \<                              \< r_B \sample \bin^\secpar                                         \\
+                                                                 \<                              \< \mroot_B \gets \commit\del{B_B; r_B}                             \\
+                                                                 \< \sendmessageleft*{\mroot_B}  \<                                                                  \pclb
+        \pcintertext[dotted]{Move Phase}
+        x, y \gets \pcalgostyle{ChooseShot}\del{}                \<                              \<                                                                  \\
+                                                                 \< \sendmessageright*{x, y}     \<                                                                  \pclb
+        \pcintertext[dotted]{Proof / Response Phase}
+                                                                 \<                              \< z \gets f\del{B_B, x, y}                                         \\
+                                                                 \<                              \< \pi_B \gets \pcalgostyle{Prove}\del{B_B, r_B, x, y, z, \mroot_B} \\
+                                                                 \< \sendmessageleft*{z, \pi_B}  \<                                                                  \pclb
+        \pcintertext[dotted]{Verification Phase}
+        \key[accept] \gets \verify\del{\mroot_B, x, y, z, \pi_B} \<                              \<
+    }
+\end{pcimage}
